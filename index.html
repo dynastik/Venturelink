@@ -383,6 +383,30 @@
         </div>
     </div>
 
+    <!-- PITCH BUILDER MODAL -->
+    <div id="pitch-modal" class="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="glass p-6 rounded-3xl border border-gray-800 max-w-xl w-full space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <h3 class="text-base font-bold flex items-center space-x-2"><i class="fa-solid fa-microchip text-indigo-400"></i><span>Pitch Builder</span></h3>
+                <button onclick="closePitchModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-3">
+                <input id="pitch-name" type="text" placeholder="Startup name" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
+                <input id="pitch-concept" type="text" placeholder="Core idea / value prop" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
+            </div>
+
+            <div id="pitch-output" class="rounded-2xl bg-gray-950 border border-gray-800 p-4 text-sm text-gray-300 min-h-[120px]">
+                Enter your startup details and generate a polished pitch.
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button onclick="generatePitch()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold">Generate pitch</button>
+                <button onclick="markPitchReady()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Mark ready</button>
+                <button onclick="copyPitchText()" class="px-4 py-2.5 rounded-xl bg-gray-800 text-gray-200 text-xs font-bold hover:text-white">Copy</button>
+            </div>
+        </div>
+    </div>
 
     <!-- LAUNCH CENTER -->
     <div id="launch-center" class="fixed inset-0 z-[55] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
@@ -928,15 +952,57 @@
     document.getElementById('launch-kpis').innerHTML=[
       ['Progress',pct+'%'],['Posts',posts.length],['Connections',con.length],['Stage',s?.stage||'—']
     ].map(x=>`<div class="vl-kpi"><strong>${x[1]}</strong><span>${x[0]}</span></div>`).join('');
-    document.getElementById('launch-checklist').innerHTML=checks.map((x,i)=>`
+
+    const actionMap={
+      'Account created':'account',
+      'Startup created':'startup',
+      'Startup description':'description',
+      'Problem defined':'problem',
+      'First post':'post',
+      'First connection':'connection',
+      'Pitch ready':'pitch',
+      'Launch page':'launch'
+    };
+
+    document.getElementById('launch-checklist').innerHTML=checks.map((x)=>`
       <div class="vl-row">
         <div class="w-8 h-8 rounded-lg ${x[1]?'bg-emerald-500/15':'bg-gray-900'} flex items-center justify-center">
           <i class="fa-solid ${x[1]?'fa-check text-emerald-400':'fa-arrow-right text-gray-500'} text-xs"></i>
         </div>
         <div class="grow"><p class="text-xs font-bold">${x[0]}</p><p class="vl-muted">${x[1]?'Completed':x[2]}</p></div>
-        ${!x[1] && i===5 ? `<button onclick="goToDirectory()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold">Do it</button>`:''}
+        ${!x[1] && actionMap[x[0]] ? `<button onclick="launchChecklistAction('${actionMap[x[0]]}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold">Do it</button>`:''}
       </div>`).join('');
   }
+
+  window.launchChecklistAction=function(action){
+    closeLaunchCenter();
+    switch(action){
+      case 'account':
+        document.getElementById('auth-modal').classList.remove('hidden');
+        document.getElementById('auth-modal').classList.add('flex');
+        break;
+      case 'startup':
+      case 'description':
+      case 'problem':
+        openStartupModal();
+        break;
+      case 'post':
+        switchTab('feed');
+        setTimeout(openPostModal, 80);
+        break;
+      case 'connection':
+        switchTab('directory');
+        break;
+      case 'pitch':
+        openPitchModal();
+        break;
+      case 'launch':
+        openPublicStartup();
+        break;
+      default:
+        break;
+    }
+  };
 
   window.goToDirectory=function(){closeLaunchCenter();switchTab('directory');};
 
@@ -974,21 +1040,60 @@
   };
   window.closePublicStartup=function(){const el=document.getElementById('public-startup-modal');el.classList.add('hidden');el.classList.remove('flex')};
 
+  window.openPitchModal=function(){
+    const s=startup()||{};
+    const nameField=document.getElementById('pitch-name');
+    const conceptField=document.getElementById('pitch-concept');
+    if(nameField) nameField.value = s.name || 'Your startup';
+    if(conceptField) conceptField.value = s.problem || 'AI workflow automation for fast-moving teams';
+    if(document.getElementById('pitch-output')) window.generatePitch();
+    const el=document.getElementById('pitch-modal'); if(el){el.classList.remove('hidden');el.classList.add('flex');}
+  };
+  window.closePitchModal=function(){const el=document.getElementById('pitch-modal'); if(el){el.classList.add('hidden');el.classList.remove('flex');}};
+  window.generatePitch=function(){
+    const name=(document.getElementById('pitch-name')?.value||'Your startup').trim() || 'Your startup';
+    const concept=(document.getElementById('pitch-concept')?.value||'AI workflow automation for fast-moving teams').trim() || 'AI workflow automation for fast-moving teams';
+    const out=document.getElementById('pitch-output');
+    if(!out) return;
+    out.innerHTML=`
+      <div class="space-y-3">
+        <div class="flex items-center justify-between"><span class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Investor pitch</span><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400">Ready</span></div>
+        <p class="text-sm leading-relaxed text-gray-200">“Hi, I’m the founder of <strong class="text-white">${escapeHtml(name)}</strong>. We are building <strong class="text-white">${escapeHtml(concept)}</strong> to remove the biggest bottleneck in modern operations: speed, visibility, and manual execution. Our product delivers a clear ROI, reduces overhead, and helps teams scale faster without adding headcount. We’re raising to accelerate product, distribution, and customer traction.”</p>
+        <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
+          <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Problem</span> Manual workflows slow teams down.</div>
+          <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Solution</span> AI-powered, low-friction workflow system.</div>
+        </div>
+      </div>`;
+  };
+  window.copyPitchText=function(){
+    const text=document.getElementById('pitch-output')?.innerText || '';
+    if(!text){showToast('Generate a pitch first.'); return;}
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(()=>showToast('Pitch copied to clipboard!')).catch(()=>showToast('Pitch ready to copy.'));
+    } else {
+      showToast('Pitch ready to copy.');
+    }
+  };
+
   function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 
   // Add Message buttons to existing directory cards without changing their design.
   function enhanceDirectory(){
-    document.querySelectorAll('#directory-grid .group').forEach(card=>{
+    document.querySelectorAll('#directory-grid > div').forEach(card=>{
       if(card.dataset.vlEnhanced)return;
-      const name=card.querySelector('h3')?.innerText?.trim();
+      const name=card.querySelector('h4')?.innerText?.trim() || card.querySelector('h3')?.innerText?.trim();
       if(!name)return;
       const actions=card.querySelector('.flex.items-center.justify-between');
       if(actions){
-        const btn=document.createElement('button');
-        btn.className='px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-[10px] font-bold hover:border-indigo-500 transition';
-        btn.innerHTML='<i class="fa-regular fa-message mr-1"></i> Message';
-        btn.onclick=()=>openMessageModal(name);
-        actions.appendChild(btn);
+        const existing=actions.querySelector('[data-vl-message]');
+        if(!existing){
+          const btn=document.createElement('button');
+          btn.dataset.vlMessage='1';
+          btn.className='px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-[10px] font-bold hover:border-indigo-500 transition';
+          btn.innerHTML='<i class="fa-regular fa-message mr-1"></i> Message';
+          btn.onclick=()=>openMessageModal(name);
+          actions.appendChild(btn);
+        }
       }
       card.dataset.vlEnhanced='1';
     });
