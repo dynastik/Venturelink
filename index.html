@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VentureLink | The Startup Launchpad & Matchmaker</title>
+    <title>cslid | The Startup Launchpad & Matchmaker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -25,8 +25,41 @@
     </script>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Load the Supabase JavaScript library before the custom app scripts. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Paste the public values from your Supabase Dashboard here.
+        const SUPABASE_URL = "https://tudqrcmdncncoqctfdrj.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZHFyY21kbmNuY29xY3RmZHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzc3ODYsImV4cCI6MjEwNTY1Mzc4Nn0.BPcwINWu203NrWqj17-5wwcPqk8all8uhOhwmDr4860";
+        const SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("your-actual"));
+        const SUPABASE_BASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, "");
+
+        // The anon key is designed for browser use; protect your database with RLS policies.
+        const supabaseClient = window.supabase.createClient(SUPABASE_BASE_URL, SUPABASE_ANON_KEY);
+
+        async function loadData() {
+            if (!SUPABASE_CONFIGURED) {
+                console.info("Supabase is ready for configuration. Add your project URL and anon key.");
+                return;
+            }
+            console.info("Supabase client initialized. Run supabase-schema.sql to create the cslid tables.");
+        }
+
+        async function saveToSupabase(table, row) {
+            if (!SUPABASE_CONFIGURED) return null;
+            const { data, error } = await supabaseClient.from(table).upsert(row).select().single();
+            if (error) {
+                console.error(`Supabase ${table} save failed:`, error.message);
+                return null;
+            }
+            return data;
+        }
+        window.saveToSupabase = saveToSupabase;
+
+        loadData();
+    </script>
+    <!-- Editorial serif for the brand, practical sans for UI, mono for metadata. -->
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -46,7 +79,8 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
         .gradient-text {
-            background: linear-gradient(135deg, #818cf8 0%, #ec4899 50%, #f43f5e 100%);
+            background: linear-gradient(135deg, #496653 0%, #78977b 100%);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -86,8 +120,197 @@
 .vl-tab{padding:8px 12px;border-radius:9px;border:1px solid #252525;background:#101010;color:#aaa;font-size:11px}.vl-tab.active{background:#fff;color:#090909}
 .vl-kpi{background:#101010;border:1px solid #252525;border-radius:14px;padding:14px}.vl-kpi strong{font-size:22px}.vl-kpi span{display:block;color:#777;font-size:10px;margin-top:3px}
 </style>
+
+<style>
+    :root {
+        --paper: #f4f1ea;
+        --paper-deep: #ebe7de;
+        --ink: #253329;
+        --muted: #6c756c;
+        --sage: #5d8066;
+        --sage-dark: #3d5d46;
+        --line: #d7dcd2;
+        --white: #fbfaf7;
+    }
+
+    html[data-theme="dark"] {
+        --paper: #0b110d;
+        --paper-deep: #121d16;
+        --ink: #edf3ed;
+        --muted: #9aaa9d;
+        --sage: #a8c9ab;
+        --sage-dark: #78a27f;
+        --line: #293a2d;
+        --white: #152219;
+    }
+
+    body {
+        font-family: 'IBM Plex Sans', sans-serif !important;
+        background: var(--paper) !important;
+        color: var(--ink) !important;
+        letter-spacing: 0 !important;
+        transition: background-color .25s ease, color .25s ease;
+    }
+
+    h1, h2, h3, .gradient-text {
+        font-family: 'EB Garamond', Georgia, serif !important;
+        letter-spacing: 0 !important;
+    }
+
+    header {
+        background: rgba(244, 241, 234, 0.92) !important;
+        border-color: var(--line) !important;
+        box-shadow: 0 1px 0 rgba(61, 93, 70, 0.04);
+        backdrop-filter: blur(18px);
+    }
+
+    html[data-theme="dark"] header { background: rgba(11, 17, 13, .94) !important; }
+
+    header .w-10.h-10 {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+        background: var(--sage-dark) !important;
+        box-shadow: none !important;
+    }
+
+    header .text-xl {
+        color: var(--sage-dark) !important;
+        font-size: 1.65rem !important;
+    }
+
+    header .text-\[10px\] { color: var(--sage) !important; }
+    nav { background: rgba(235, 231, 222, 0.7) !important; border-color: var(--line) !important; }
+    html[data-theme="dark"] nav { background: rgba(18, 29, 22, .9) !important; }
+    nav .nav-btn { color: var(--muted) !important; }
+    nav .nav-btn:hover { color: var(--ink) !important; background: var(--paper-deep) !important; }
+    nav .nav-btn.bg-indigo-600,
+    .bg-indigo-600,
+    .bg-gradient-to-r.from-indigo-600,
+    .bg-gradient-to-tr.from-indigo-600 { background: var(--sage-dark) !important; }
+    nav .nav-btn.bg-indigo-600 { color: #fff !important; box-shadow: none !important; }
+
+    main { max-width: 1320px !important; padding-top: 3.5rem !important; padding-bottom: 5rem !important; }
+    #tab-match { min-height: 82vh !important; justify-content: flex-start !important; padding-top: 2.5rem; }
+    #tab-match > div:first-child { margin-bottom: 2rem !important; }
+    #tab-match h1 { font-size: clamp(2.25rem, 5vw, 4rem) !important; line-height: .95 !important; font-weight: 600 !important; }
+    #tab-match > div:first-child p { color: var(--muted) !important; margin-top: .75rem !important; }
+    #tab-match > div:first-child span { background: transparent !important; border: 0 !important; color: var(--sage-dark) !important; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+
+    #active-card, .glass, .glass-card {
+        background: rgba(251, 250, 247, .96) !important;
+        border-color: var(--line) !important;
+        box-shadow: 0 20px 55px rgba(61, 93, 70, .09) !important;
+        backdrop-filter: none !important;
+    }
+    #active-card { border-radius: 18px !important; }
+    #tab-match .absolute.w-\[92\%\], #tab-match .absolute.w-\[96\%\] { background: var(--paper-deep) !important; border-color: var(--line) !important; box-shadow: none !important; }
+    #active-card > div:first-child { height: 13rem !important; background: linear-gradient(135deg, #dce5d8, #f7f5ef 72%) !important; }
+    #active-card > div:first-child:before { content: 'cslid / match deck'; position: absolute; top: 1.5rem; left: 1.5rem; color: var(--sage-dark); font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+    #active-card > div:first-child .absolute.top-4 { top: 4rem !important; left: 1.5rem !important; }
+    #active-card > div:first-child .absolute.bottom-4 { bottom: 1.5rem !important; left: 1.5rem !important; }
+    #card-name { color: var(--ink) !important; font-size: 2.25rem !important; font-weight: 600 !important; }
+    #card-tagline { color: var(--sage-dark) !important; }
+    #card-badge, #card-stage { background: var(--sage-dark) !important; color: #fff !important; backdrop-filter: none !important; }
+    #active-card .text-gray-400, #active-card .text-gray-300 { color: var(--muted) !important; }
+    #active-card .border-gray-800 { border-color: var(--line) !important; }
+    #card-tags span { background: var(--paper-deep) !important; border-color: var(--line) !important; color: var(--sage-dark) !important; }
+    #tab-match > .flex.items-center { margin-top: 2.25rem !important; }
+    #tab-match > .flex.items-center button { background: var(--white) !important; border-color: var(--line) !important; box-shadow: 0 8px 20px rgba(61, 93, 70, .08) !important; }
+    #tab-match > .flex.items-center button:last-child { background: var(--sage-dark) !important; color: #fff !important; box-shadow: 0 12px 24px rgba(61, 93, 70, .2) !important; }
+
+    #tab-feed, #tab-directory, #tab-profile { padding-top: 1rem; }
+    #tab-feed > div, #tab-directory > div, #tab-profile > div { box-shadow: 0 12px 35px rgba(61, 93, 70, .06) !important; }
+    .text-white { color: var(--ink) !important; }
+    .text-gray-200 { color: var(--ink) !important; }
+    .text-gray-300, .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700 { color: var(--muted) !important; }
+    .border-gray-800, .border-gray-700, .border-gray-700\/60 { border-color: var(--line) !important; }
+    input, textarea, select, .vl-input { background: var(--white) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+    input:focus, textarea:focus, select:focus, .vl-input:focus { border-color: var(--sage) !important; box-shadow: 0 0 0 3px rgba(93, 128, 102, .12); }
+    .vl-pill, .vl-tab, .vl-kpi, .vl-row { background: var(--white) !important; border-color: var(--line) !important; color: var(--ink) !important; }
+    .vl-muted { color: var(--muted) !important; }
+    ::-webkit-scrollbar-track { background: var(--paper) !important; }
+    ::-webkit-scrollbar-thumb { background: #bdc8bb !important; }
+    .fa-indigo, .text-indigo-400, .text-indigo-300, .text-pink-400, .text-cyan-400 { color: var(--sage) !important; }
+    .bg-indigo-600, .bg-emerald-600, [class*="from-indigo-600"] { color: #fff !important; }
+    header button[onclick="openPostModal()"] {
+        background: var(--sage-dark) !important;
+        box-shadow: 0 10px 24px rgba(61, 93, 70, .18) !important;
+    }
+
+    .theme-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--white);
+        color: var(--sage-dark);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color .2s ease, transform .2s ease;
+    }
+    .theme-toggle:hover { transform: translateY(-1px); background: var(--paper-deep); }
+    html[data-theme="dark"] .glass,
+    html[data-theme="dark"] .glass-card,
+    html[data-theme="dark"] #active-card { background: rgba(32, 45, 36, .96) !important; }
+    html[data-theme="dark"] #active-card > div:first-child { background: linear-gradient(135deg, #172a1c, #0f1812 72%) !important; }
+    html[data-theme="dark"] #tab-match .absolute.w-\[92\%\],
+    html[data-theme="dark"] #tab-match .absolute.w-\[96\%\] { background: #202d24 !important; }
+    html[data-theme="dark"] #active-card > div:first-child:before { color: var(--sage) !important; }
+    html[data-theme="dark"] input::placeholder,
+    html[data-theme="dark"] textarea::placeholder { color: #829184 !important; }
+    html[data-theme="dark"] .bg-gray-900,
+    html[data-theme="dark"] .bg-gray-950,
+    html[data-theme="dark"] .bg-gray-950\/60 { background: #101811 !important; }
+    html[data-theme="dark"] .bg-gray-800 { background: #18251b !important; }
+    html[data-theme="dark"] .text-black { color: #edf3ed !important; }
+
+    #launch-center, #message-modal, #public-startup-modal, #match-modal,
+    #post-modal, #startup-modal, #auth-modal, #pitch-modal {
+        overscroll-behavior: contain;
+    }
+    [id$="-modal"] > div, #launch-center > div {
+        max-height: calc(100dvh - 2rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    @media (max-width: 767px) {
+        header { flex-wrap: wrap; gap: .75rem; padding: .75rem 1rem !important; }
+        header > div:first-child { min-width: 0; flex: 1 1 auto; }
+        header > div:first-child .text-\[10px\] { display: none; }
+        header > div:last-child { gap: .4rem; }
+        header > div:last-child > button:not(.theme-toggle) { display: inline-flex !important; width: 2.25rem; height: 2.25rem; padding: 0 !important; justify-content: center; border-radius: 999px; }
+        header > div:last-child > button:not(.theme-toggle) span { display: none; }
+        header > div:last-child > div { padding: .25rem !important; }
+        header > div:last-child > div img { width: 1.9rem; height: 1.9rem; }
+        nav { order: 3; width: 100%; overflow-x: auto; justify-content: flex-start; padding: .25rem !important; border-radius: 12px !important; scrollbar-width: none; }
+        nav::-webkit-scrollbar { display: none; }
+        nav .nav-btn { flex: 0 0 auto; padding: .55rem .8rem !important; font-size: .75rem !important; }
+        main { padding: 2rem 1rem 4rem !important; }
+        #tab-match { padding-top: 1rem; min-height: auto !important; }
+        #tab-match > div:first-child { margin-bottom: 1.5rem !important; }
+        #tab-match h1 { font-size: 2.7rem !important; }
+        #tab-match > .relative { height: min(540px, 68vh) !important; min-height: 430px; }
+        #active-card > div:first-child { height: 11rem !important; }
+        #active-card .p-5 { padding: 1.1rem !important; }
+        #active-card .flex.items-center.justify-between { gap: .5rem; align-items: flex-start; flex-wrap: wrap; }
+        #active-card .flex.items-center.justify-between > span { font-size: 9px; }
+        #tab-match > .flex.items-center { margin-top: 1.5rem !important; gap: 1rem !important; }
+        #tab-feed, #tab-directory, #tab-profile { padding-top: 0; }
+        #tab-directory .flex.items-center.space-x-2 { width: 100%; overflow-x: auto; scrollbar-width: none; }
+        #tab-directory .flex.items-center.space-x-2::-webkit-scrollbar { display: none; }
+        #tab-profile .flex.justify-center.space-x-6 { gap: 1rem; justify-content: space-between; }
+        [id$="-modal"] > div, #launch-center > div { width: 100%; max-height: calc(100dvh - 1rem); border-radius: 18px !important; padding: 1.1rem !important; }
+        #startup-modal > div { padding-bottom: 1.5rem !important; }
+        #launch-kpis { gap: .4rem !important; }
+        .vl-kpi { padding: .65rem !important; }
+        .vl-kpi strong { font-size: 1.2rem !important; }
+    }
+</style>
 </head>
-<body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+<body class="min-h-screen flex flex-col selection:bg-green-200 selection:text-green-950">
 
     <!-- Navigation Header -->
     <header class="glass sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex items-center justify-between border-b border-gray-800/80">
@@ -96,13 +319,13 @@
                 <i class="fa-solid fa-rocket text-white text-lg"></i>
             </div>
             <div>
-                <span class="text-xl font-extrabold tracking-tight gradient-text">VentureLink</span>
+                <span class="text-xl font-extrabold tracking-tight gradient-text">cslid</span>
                 <span class="block text-[10px] uppercase tracking-widest text-indigo-400 font-semibold">Startup Launchpad & Match</span>
             </div>
         </div>
 
         <!-- Desktop Navigation Tabs -->
-        <nav class="hidden md:flex items-center space-x-1 bg-gray-900/60 p-1.5 rounded-2xl border border-gray-800">
+        <nav class="flex items-center space-x-1 bg-gray-900/60 p-1.5 rounded-2xl border border-gray-800">
             <button onclick="switchTab('match')" id="nav-btn-match" class="nav-btn px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
                 <i class="fa-solid fa-fire text-amber-300"></i>
                 <span>Match Deck</span>
@@ -119,11 +342,11 @@
 
         <!-- Right User Profile CTA -->
         <div class="flex items-center space-x-3">
-            <button onclick="openLaunchCenter()" class="hidden sm:flex items-center space-x-2 px-4 py-2 rounded-xl bg-gray-800/80 border border-gray-700 text-white font-medium text-sm hover:border-indigo-500 transition">
+            <button onclick="openLaunchCenter()" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gray-800/80 border border-gray-700 text-white font-medium text-sm hover:border-indigo-500 transition">
                 <i class="fa-solid fa-rocket text-indigo-400 text-xs"></i>
                 <span>Launch Center</span>
             </button>
-            <button onclick="openPostModal()" class="hidden sm:flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-medium text-sm hover:opacity-90 shadow-lg shadow-pink-600/20 transition">
+            <button onclick="openPostModal()" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:opacity-90 transition">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Post Update</span>
             </button>
@@ -131,6 +354,9 @@
                 <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" alt="Profile" class="w-8 h-8 rounded-lg object-cover">
                 <span class="hidden xl:inline text-xs font-semibold pr-2">Sarah Chen</span>
             </div>
+            <button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </div>
     </header>
 
@@ -157,8 +383,6 @@
                 <div id="active-card" class="absolute inset-0 rounded-3xl glass-card border border-gray-700/80 overflow-hidden shadow-2xl z-10 flex flex-col transition-transform duration-300">
                     <!-- Card Header Image & Badges -->
                     <div class="relative h-60 w-full overflow-hidden bg-gray-800">
-                        <img id="card-image" src="" alt="Startup/Investor" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-black/30"></div>
                         <div class="absolute top-4 left-4 flex space-x-2">
                             <span id="card-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-600/90 text-white backdrop-blur-md"></span>
                             <span id="card-stage" class="px-3 py-1 rounded-full text-xs font-semibold bg-pink-600/90 text-white backdrop-blur-md"></span>
@@ -373,7 +597,7 @@
                 <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-pink-500 to-amber-400 mx-auto flex items-center justify-center mb-3">
                     <i class="fa-solid fa-rocket text-white text-xl"></i>
                 </div>
-                <h2 class="text-2xl font-extrabold gradient-text">Welcome to VentureLink</h2>
+                <h2 class="text-2xl font-extrabold gradient-text">Welcome to cslid</h2>
                 <p class="text-xs text-gray-400 mt-2">Prototype account — your details are saved locally for now.</p>
             </div>
             <input id="auth-name" type="text" placeholder="Your name" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
@@ -412,7 +636,7 @@
     <div id="launch-center" class="fixed inset-0 z-[55] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
       <div class="glass p-6 rounded-3xl border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-5">
-          <div><p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Launch Center</p><h3 class="text-xl font-extrabold">Get VentureLink-ready</h3></div>
+          <div><p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Launch Center</p><h3 class="text-xl font-extrabold">Get cslid-ready</h3></div>
           <button onclick="closeLaunchCenter()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
         <div id="launch-kpis" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5"></div>
@@ -457,12 +681,12 @@
         let matchProfiles = [];
 
         function getRegisteredStartups() {
-            try { return JSON.parse(localStorage.getItem('venturelink_startups') || '[]'); }
+            try { return JSON.parse(localStorage.getItem('cslid_startups') || '[]'); }
             catch(e) { return []; }
         }
 
         function saveRegisteredStartups(list) {
-            localStorage.setItem('venturelink_startups', JSON.stringify(list));
+            localStorage.setItem('cslid_startups', JSON.stringify(list));
         }
 
         function refreshMatchProfiles() {
@@ -492,7 +716,7 @@
                 role: "Founder @ FinScale",
                 avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150",
                 time: "2 hours ago",
-                content: "🚀 Huge milestone alert! We just crossed $20k MRR exactly 4 months after launching our MVP on VentureLink. Huge thanks to the angel syndicate who connected with us during our first week swiping here! Onwards to Series A! 📈",
+                content: "🚀 Huge milestone alert! We just crossed $20k MRR exactly 4 months after launching our MVP on cslid. Huge thanks to the angel syndicate who connected with us during our first week swiping here! Onwards to Series A! 📈",
                 image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=800",
                 likes: 142,
                 comments: 28,
@@ -548,7 +772,6 @@
         // LIVE STARTUP SWIPE DECK
         function renderCard() {
             if (!matchProfiles.length) {
-                document.getElementById('card-image').src = "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=600";
                 document.getElementById('card-badge').innerText = "Waiting for startups";
                 document.getElementById('card-stage').innerText = "LIVE";
                 document.getElementById('card-name').innerText = "No startup profiles yet";
@@ -562,7 +785,6 @@
             }
 
             const profile = matchProfiles[currentProfileIndex];
-            document.getElementById('card-image').src = profile.image;
             document.getElementById('card-badge').innerText = profile.badge;
             document.getElementById('card-stage').innerText = profile.stage;
             document.getElementById('card-name').innerText = profile.name;
@@ -595,15 +817,24 @@
                 card.style.opacity = '1';
 
                 if (action === 'like' || action === 'super') {
-                    const matches = getStore('venturelink_matches', []);
+                    const matches = getStore('cslid_matches', []);
                     if (!matches.some(m => m.id === profile.id)) {
-                        matches.push({
+                        const match = {
                             id: profile.id,
                             name: profile.name,
                             contactUrl: profile.contactUrl,
                             matchedAt: Date.now()
+                        };
+                        matches.push(match);
+                        setStore('cslid_matches', matches);
+                        const currentUser = getStore('cslid_user', {});
+                        saveToSupabase('cslid_matches', {
+                            id: `${currentUser.email || 'anonymous'}_${profile.id}`,
+                            user_id: currentUser.email || 'anonymous',
+                            name: match.name,
+                            contact_url: match.contactUrl || null,
+                            matched_at: new Date(match.matchedAt).toISOString()
                         });
-                        setStore('venturelink_matches', matches);
                     }
 
                     // Acceptance takes the investor directly to the real contact
@@ -773,9 +1004,17 @@
 
         function saveProfile() {
             const inputs = document.querySelectorAll('#tab-profile input');
-            setStore('venturelink_profile', {
+            const profile = {
                 name: inputs[0]?.value || '',
                 startup: inputs[1]?.value || ''
+            };
+            setStore('cslid_profile', profile);
+            const currentUser = getStore('cslid_user', {});
+            saveToSupabase('cslid_profiles', {
+                id: currentUser.email || 'anonymous',
+                user_id: currentUser.email || 'anonymous',
+                name: profile.name,
+                startup: profile.startup
             });
             showToast('Profile saved on this device!');
         }
@@ -797,7 +1036,8 @@
             const name = document.getElementById('auth-name').value.trim();
             const email = document.getElementById('auth-email').value.trim();
             if(!name || !email) return showToast('Enter your name and email.');
-            setStore('venturelink_user', {name, email});
+            setStore('cslid_user', {name, email});
+            saveToSupabase('cslid_users', {id: email, name, email});
             document.getElementById('auth-modal').classList.add('hidden');
             document.getElementById('auth-modal').classList.remove('flex');
             updateUserUI();
@@ -805,14 +1045,14 @@
         }
 
         function updateUserUI() {
-            const user = getStore('venturelink_user', null);
+            const user = getStore('cslid_user', null);
             if(!user) return;
             const labels = document.querySelectorAll('#nav-btn-profile span');
             if(labels.length) labels[0].innerText = user.name;
         }
 
         function openStartupModal() {
-            const startup = getStore('venturelink_startup', null);
+            const startup = getStore('cslid_startup', null);
             if(startup) {
                 document.getElementById('startup-name').value = startup.name || '';
                 document.getElementById('startup-tagline').value = startup.tagline || '';
@@ -834,7 +1074,7 @@
         }
 
         function saveStartup() {
-            const user = getStore('venturelink_user', {});
+            const user = getStore('cslid_user', {});
             const startup = {
                 id: user.email || ('startup_' + Date.now()),
                 name: document.getElementById('startup-name').value.trim(),
@@ -861,7 +1101,20 @@
             else startups.push(startup);
 
             saveRegisteredStartups(startups);
-            setStore('venturelink_startup', startup);
+            setStore('cslid_startup', startup);
+            saveToSupabase('cslid_startups', {
+                id: startup.id,
+                user_id: user.email || 'anonymous',
+                name: startup.name,
+                tagline: startup.tagline,
+                stage: startup.stage,
+                sector: startup.sector,
+                problem: startup.problem,
+                location: startup.location,
+                seeking: startup.seeking,
+                traction: startup.traction,
+                contact_url: startup.contactUrl
+            });
             closeStartupModal();
             refreshMatchProfiles();
             showToast('Startup is now live in the investor swipe deck!');
@@ -871,11 +1124,25 @@
         const originalSubmitNewPost = submitNewPost;
         submitNewPost = function() {
             originalSubmitNewPost();
-            setStore('venturelink_posts', feedPosts);
+            setStore('cslid_posts', feedPosts);
+            const post = feedPosts[0];
+            const currentUser = getStore('cslid_user', {});
+            saveToSupabase('cslid_posts', {
+                id: post.id || `post_${Date.now()}`,
+                user_id: currentUser.email || 'anonymous',
+                author: post.author,
+                role: post.role,
+                post_time: post.time,
+                content: post.content,
+                image: post.image,
+                likes: post.likes,
+                comments: post.comments,
+                tags: post.tags
+            });
         };
 
         // Restore posts saved by this browser.
-        const savedPosts = getStore('venturelink_posts', null);
+        const savedPosts = getStore('cslid_posts', null);
         if(savedPosts) {
             feedPosts.length = 0;
             savedPosts.forEach(p => feedPosts.push(p));
@@ -883,10 +1150,16 @@
 
         // Make directory connections persist locally.
         function connectPersistently(name) {
-            const connections = getStore('venturelink_connections', []);
+            const connections = getStore('cslid_connections', []);
             if(!connections.includes(name)) {
                 connections.push(name);
-                setStore('venturelink_connections', connections);
+                setStore('cslid_connections', connections);
+                const currentUser = getStore('cslid_user', {});
+                saveToSupabase('cslid_connections', {
+                    id: `${currentUser.email || 'anonymous'}_${name}`,
+                    user_id: currentUser.email || 'anonymous',
+                    name
+                });
                 showToast(`Connection request sent to ${name}!`);
             } else {
                 showToast(`You already connected with ${name}.`);
@@ -901,7 +1174,7 @@
             updateUserUI();
 
             // First-run account gate.
-            if(!getStore('venturelink_user', null)) {
+            if(!getStore('cslid_user', null)) {
                 setTimeout(() => {
                     document.getElementById('auth-modal').classList.remove('hidden');
                     document.getElementById('auth-modal').classList.add('flex');
@@ -912,19 +1185,31 @@
 
 <script>
 /* ============================================================
-   VENTURELINK ROLLOUT MVP
+    CSLID ROLLOUT MVP
    Frontend-only demo layer. Replace localStorage with Supabase
    when moving to production.
    ============================================================ */
 (function(){
+    function applyTheme(theme){
+        const dark = theme === 'dark';
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        localStorage.setItem('cslid_theme', dark ? 'dark' : 'light');
+        const toggle = document.querySelector('.theme-toggle');
+        if(toggle) toggle.innerHTML = `<i class="fa-solid fa-${dark ? 'sun' : 'moon'}"></i>`;
+    }
+    window.toggleTheme=function(){
+        applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    };
+    applyTheme(localStorage.getItem('cslid_theme') || 'light');
+
   const K = {
-    user:'venturelink_user',
-    startup:'venturelink_startup',
-    posts:'venturelink_posts',
-    connections:'venturelink_connections',
-    matches:'venturelink_matches',
-    messages:'venturelink_messages',
-    tasks:'venturelink_tasks'
+    user:'cslid_user',
+    startup:'cslid_startup',
+    posts:'cslid_posts',
+    connections:'cslid_connections',
+    matches:'cslid_matches',
+    messages:'cslid_messages',
+    tasks:'cslid_tasks'
   };
   const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
   const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -945,7 +1230,7 @@
       ['Problem defined',!!(s&&s.problem),'Explain the problem'],
       ['First post',posts.length>0,'Publish your first journey update'],
       ['First connection',con.length>0,'Connect with someone in the directory'],
-      ['Pitch ready',read('venturelink_pitch_ready',false),'Complete your pitch deck'],
+    ['Pitch ready',read('cslid_pitch_ready',false),'Complete your pitch deck'],
       ['Launch page',!!s,'Preview your public startup page']
     ];
     const done=checks.filter(x=>x[1]).length, pct=Math.round(done/checks.length*100);
@@ -1021,7 +1306,15 @@
   window.sendMessage=function(){
     const input=document.getElementById('message-input'), text=input.value.trim(), name=document.getElementById('message-modal').dataset.person;
     if(!text)return;
-    const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);input.value='';renderMessages(name);showToast('Message saved');
+        const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);
+        const currentUser = user() || {};
+        saveToSupabase('cslid_messages', {
+            id: `${currentUser.email || 'anonymous'}_${name}`,
+            user_id: currentUser.email || 'anonymous',
+            thread_key: name,
+            messages: all[name]
+        });
+        input.value='';renderMessages(name);showToast('Message saved');
   };
 
   window.openPublicStartup=function(){
@@ -1100,7 +1393,17 @@
   }
 
   // Small persistence hook for pitch/tool completion.
-  window.markPitchReady=function(){write('venturelink_pitch_ready',true);showToast('Pitch marked ready!');renderLaunchCenter()};
+    window.markPitchReady=function(){
+        write('cslid_pitch_ready',true);
+        const currentUser = user() || {};
+        saveToSupabase('cslid_tasks', {
+            id: `${currentUser.email || 'anonymous'}_pitch_ready`,
+            user_id: currentUser.email || 'anonymous',
+            task_key: 'pitch_ready',
+            complete: true
+        });
+        showToast('Pitch marked ready!');renderLaunchCenter();
+    };
 
   // Wrap renderDirectory if present so the new message controls survive filters.
   const oldRenderDirectory=window.renderDirectory;
