@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cslid | The Startup Launchpad & Matchmaker</title>
+    <title>cslid. | The Startup Launchpad & Matchmaker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -217,7 +217,7 @@
     #active-card { border-radius: 18px !important; }
     #tab-match .absolute.w-\[92\%\], #tab-match .absolute.w-\[96\%\] { background: var(--paper-deep) !important; border-color: var(--line) !important; box-shadow: none !important; }
     #active-card > div:first-child { height: 13rem !important; background: linear-gradient(135deg, #dce5d8, #f7f5ef 72%) !important; }
-    #active-card > div:first-child:before { content: 'cslid / match deck'; position: absolute; top: 1.5rem; left: 1.5rem; color: var(--sage-dark); font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+    #active-card > div:first-child:before { content: 'cslid. / match deck'; position: absolute; top: 1.5rem; left: 1.5rem; color: var(--sage-dark); font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
     #active-card > div:first-child .absolute.top-4 { top: 4rem !important; left: 1.5rem !important; }
     #active-card > div:first-child .absolute.bottom-4 { bottom: 1.5rem !important; left: 1.5rem !important; }
     #card-name { color: var(--ink) !important; font-size: 2.25rem !important; font-weight: 600 !important; }
@@ -319,6 +319,32 @@
         .vl-kpi { padding: .65rem !important; }
         .vl-kpi strong { font-size: 1.2rem !important; }
     }
+
+    @media (max-width: 480px) and (orientation: portrait) {
+        header { align-items: center; }
+        header > div:first-child { flex: 1 1 8rem; min-width: 7rem; }
+        header > div:first-child .w-10.h-10 { width: 32px !important; height: 32px !important; }
+        header > div:first-child .text-xl { font-size: 1.45rem !important; }
+        header > div:last-child { flex: 0 0 auto; gap: .25rem; }
+        header > div:last-child > button:not(.theme-toggle),
+        header > div:last-child > div,
+        header > div:last-child > .theme-toggle { width: 2rem; height: 2rem; }
+        header > div:last-child > div img,
+        header > div:last-child > div > div { width: 1.65rem !important; height: 1.65rem !important; }
+        nav { margin-top: .1rem; }
+        nav .nav-btn { padding: .5rem .7rem !important; }
+        main { padding: 1.5rem .75rem 3rem !important; }
+        #tab-match > div:first-child { max-width: 18rem; }
+        #tab-match h1 { font-size: 2.35rem !important; }
+        #tab-match > div:first-child p { font-size: .75rem !important; line-height: 1.45; }
+        #tab-match > .relative { height: min(500px, calc(100dvh - 265px)) !important; min-height: 390px; }
+        #active-card > div:first-child { height: 9.5rem !important; flex: 0 0 9.5rem; }
+        #active-card > div:last-child { min-height: 0; overflow-y: auto; }
+        #card-name { font-size: 1.9rem !important; }
+        #active-card .flex.items-center.justify-between > span { flex: 1 1 30%; min-width: 0; line-height: 1.35; }
+        #active-card .flex.items-center.justify-between > span span { overflow-wrap: anywhere; }
+        #tab-match > .flex.items-center { margin-bottom: 1rem !important; }
+    }
 </style>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-green-200 selection:text-green-950">
@@ -330,7 +356,7 @@
                 <i class="fa-solid fa-rocket text-white text-lg"></i>
             </div>
             <div>
-                <span class="text-xl font-extrabold tracking-tight gradient-text">cslid</span>
+                <span class="text-xl font-extrabold tracking-tight gradient-text">cslid.</span>
                 <span class="block text-[10px] uppercase tracking-widest text-indigo-400 font-semibold">Startup Launchpad & Match</span>
             </div>
         </div>
@@ -362,7 +388,7 @@
                 <span>Post Update</span>
             </button>
             <div onclick="switchTab('profile')" id="nav-btn-profile" class="cursor-pointer flex items-center space-x-2 p-1.5 rounded-xl bg-gray-800/80 border border-gray-700/60 hover:border-indigo-500 transition">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" alt="Profile" class="w-8 h-8 rounded-lg object-cover">
+                    <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400" aria-label="Profile"><i class="fa-solid fa-user text-xs"></i></div>
                     <span class="hidden xl:inline text-xs font-semibold pr-2">Profile</span>
             </div>
             <button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
@@ -440,7 +466,7 @@
             <!-- Create Post Box -->
             <div class="glass p-4 rounded-2xl border border-gray-800 shadow-xl">
                 <div class="flex items-center space-x-3 mb-3">
-                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" class="w-10 h-10 rounded-xl object-cover" alt="User">
+                    <div class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-gray-400" aria-label="User"><i class="fa-solid fa-user"></i></div>
                     <div onclick="openPostModal()" class="flex-1 bg-gray-900/80 hover:bg-gray-900 cursor-pointer text-gray-400 px-4 py-2.5 rounded-xl border border-gray-800 text-sm transition">
                         Share a startup milestone, hiring update, or pitch...
                     </div>
@@ -608,7 +634,7 @@
                 <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-pink-500 to-amber-400 mx-auto flex items-center justify-center mb-3">
                     <i class="fa-solid fa-rocket text-white text-xl"></i>
                 </div>
-                <h2 class="text-2xl font-extrabold gradient-text">Welcome to cslid</h2>
+                <h2 class="text-2xl font-extrabold gradient-text">Welcome to cslid.</h2>
                 <p class="text-xs text-gray-400 mt-2">Prototype account — your details are saved locally for now.</p>
             </div>
             <input id="auth-name" type="text" placeholder="Your name" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
@@ -647,7 +673,7 @@
     <div id="launch-center" class="fixed inset-0 z-[55] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
       <div class="glass p-6 rounded-3xl border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-5">
-          <div><p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Launch Center</p><h3 class="text-xl font-extrabold">Get cslid-ready</h3></div>
+          <div><p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Launch Center</p><h3 class="text-xl font-extrabold">Get ready for cslid.</h3></div>
           <button onclick="closeLaunchCenter()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
         <div id="launch-kpis" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5"></div>
@@ -839,7 +865,7 @@
                 <div class="glass p-5 rounded-3xl border border-gray-800 space-y-4 shadow-xl">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
-                            <img src="${post.avatar}" class="w-10 h-10 rounded-xl object-cover" alt="Author">
+                            <div class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-gray-400" aria-label="Author"><i class="fa-solid fa-user"></i></div>
                             <div>
                                 <h4 class="text-sm font-bold text-white">${post.author}</h4>
                                 <p class="text-[10px] text-indigo-400 font-semibold">${post.role} • ${post.time}</p>
