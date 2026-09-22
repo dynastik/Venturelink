@@ -1,2 +1,2 @@
-# cslid
+# cslid.
 Tinder for startups
