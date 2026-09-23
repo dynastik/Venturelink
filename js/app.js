@@ -329,15 +329,16 @@
         }
 
         async function completeAuth(mode = 'signup') {
-            const name = document.getElementById('auth-name').value.trim();
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value;
+            const name = document.getElementById('auth-name')?.value.trim() || '';
+            const email = document.getElementById('auth-email')?.value.trim() || '';
+            const password = document.getElementById('auth-password')?.value || '';
             if(!email || !password || (mode === 'signup' && !name)) {
                 return showToast(mode === 'signup' ? 'Enter your name, email and password.' : 'Enter your email and password.');
             }
             if(password.length < 8) return showToast('Password must be at least 8 characters.');
             if(!window.SUPABASE_CONFIGURED) return showToast('Add your Supabase URL and anon key first.');
             try {
+                showToast(mode === 'signup' ? 'Creating account...' : 'Signing in...');
                 const result = mode === 'signup'
                     ? await window.signUpWithPassword(email, password, name)
                     : await window.signInWithPassword(email, password);
@@ -358,6 +359,7 @@
                 showToast(error.message || 'Authentication failed.');
             }
         }
+        window.completeAuth = completeAuth;
 
         function updateUserUI() {
             const user = getStore('cslid_user', null);
