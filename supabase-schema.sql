@@ -2,6 +2,17 @@
 -- Run this in Supabase Dashboard -> SQL Editor after reviewing it.
 -- This schema expects Supabase Auth users. Never use a service-role key in the website.
 
+-- These prototype tables are safe to recreate while the project is empty.
+-- This removes only cslid application tables; it does not remove Auth users.
+drop table if exists public.cslid_messages cascade;
+drop table if exists public.cslid_tasks cascade;
+drop table if exists public.cslid_matches cascade;
+drop table if exists public.cslid_connections cascade;
+drop table if exists public.cslid_posts cascade;
+drop table if exists public.cslid_startups cascade;
+drop table if exists public.cslid_profiles cascade;
+drop table if exists public.cslid_users cascade;
+
 create table if not exists public.cslid_users (
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null check (char_length(name) between 1 and 120),
