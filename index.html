@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>cslid. | The Startup Launchpad & Matchmaker</title>
-    <!-- Tailwind CSS cDN -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -286,6 +287,20 @@
         overflow-y: auto;
         overscroll-behavior: contain;
     }
+    #launch-center > div {
+        scrollbar-width: thin;
+        scrollbar-color: var(--line) transparent;
+        clip-path: inset(0 round 1.5rem);
+    }
+    #launch-center > div::-webkit-scrollbar { width: 10px; }
+    #launch-center > div::-webkit-scrollbar-track { background: transparent; }
+    #launch-center > div::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border: 3px solid transparent;
+        border-radius: 999px;
+        background-clip: padding-box;
+    }
+    #launch-center > div::-webkit-scrollbar-corner { background: transparent; }
 
     @media (max-width: 767px) {
         header { flex-wrap: wrap; gap: .75rem; padding: .75rem 1rem !important; }
@@ -314,6 +329,7 @@
         #tab-directory .flex.items-center.space-x-2::-webkit-scrollbar { display: none; }
         #tab-profile .flex.justify-center.space-x-6 { gap: 1rem; justify-content: space-between; }
         [id$="-modal"] > div, #launch-center > div { width: 100%; max-height: calc(100dvh - 1rem); border-radius: 18px !important; padding: 1.1rem !important; }
+        #launch-center > div { clip-path: inset(0 round 18px); }
         #startup-modal > div { padding-bottom: 1.5rem !important; }
         #launch-kpis { gap: .4rem !important; }
         .vl-kpi { padding: .65rem !important; }
@@ -352,8 +368,8 @@
     <!-- Navigation Header -->
     <header class="glass sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex items-center justify-between border-b border-gray-800/80">
         <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('match')">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-pink-500 to-amber-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <i class="fa-solid fa-rocket text-white text-lg"></i>
+            <div class="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-black/10">
+                <img src="favicon.svg" alt="cslid logo" class="w-full h-full object-cover">
             </div>
             <div>
                 <span class="text-xl font-extrabold tracking-tight gradient-text">cslid.</span>
