@@ -320,12 +320,16 @@
                     <i class="fa-solid fa-rocket text-white text-xl"></i>
                 </div>
                 <h2 class="text-2xl font-extrabold gradient-text">Welcome to cslid.</h2>
-                <p class="text-xs text-gray-400 mt-2">Prototype account â€” your details are saved locally for now.</p>
+                <p class="text-xs text-gray-400 mt-2">Use an email and password to create your testing account.</p>
             </div>
             <input id="auth-name" type="text" placeholder="Your name" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
             <input id="auth-email" type="email" placeholder="Email" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
-            <button onclick="completeAuth()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Create account</button>
-            <p class="text-[10px] text-gray-500 text-center">Next backend step: replace this local demo with Supabase Auth.</p>
+            <input id="auth-password" type="password" minlength="8" placeholder="Password (at least 8 characters)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="completeAuth('signup')" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Create account</button>
+                <button onclick="completeAuth('signin')" class="w-full py-3 rounded-xl bg-gray-900 border border-gray-700 text-white font-bold text-sm">Sign in</button>
+            </div>
+            <p class="text-[10px] text-gray-500 text-center">Testing account only. Verify your email if Supabase asks you to.</p>
         </div>
     </div>
 
