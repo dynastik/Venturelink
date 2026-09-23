@@ -1,4 +1,4 @@
-﻿// LIVE STARTUP MATCH DECK
+// LIVE STARTUP MATCH DECK
         // Startups publish their profile through "My Startup".
         // Investors then see those published profiles in the swipe deck.
         let currentProfileIndex = 0;
@@ -122,8 +122,8 @@
                         setStore('cslid_matches', matches);
                         const currentUser = getStore('cslid_user', {});
                         saveToSupabase('cslid_matches', {
-                            id: `${currentUser.email || 'anonymous'}_${profile.id}`,
-                            user_id: currentUser.email || 'anonymous',
+                            id: `${currentUser.id}_${profile.id}`,
+                            user_id: currentUser.id,
                             name: match.name,
                             contact_url: match.contactUrl || null,
                             matched_at: new Date(match.matchedAt).toISOString()
@@ -305,9 +305,10 @@
             };
             setStore('cslid_profile', profile);
             const currentUser = getStore('cslid_user', {});
+            const ownerId = currentUser.id || currentUser.email;
             saveToSupabase('cslid_profiles', {
-                id: currentUser.email || 'anonymous',
-                user_id: currentUser.email || 'anonymous',
+                id: ownerId,
+                user_id: ownerId,
                 name: profile.name,
                 startup: profile.startup
             });
@@ -327,16 +328,35 @@
             localStorage.setItem(key, JSON.stringify(value));
         }
 
-        function completeAuth() {
+        async function completeAuth(mode = 'signup') {
             const name = document.getElementById('auth-name').value.trim();
             const email = document.getElementById('auth-email').value.trim();
-            if(!name || !email) return showToast('Enter your name and email.');
-            setStore('cslid_user', {name, email});
-            saveToSupabase('cslid_users', {id: email, name, email});
-            document.getElementById('auth-modal').classList.add('hidden');
-            document.getElementById('auth-modal').classList.remove('flex');
-            updateUserUI();
-            showToast('Account created on this device!');
+            const password = document.getElementById('auth-password').value;
+            if(!email || !password || (mode === 'signup' && !name)) {
+                return showToast(mode === 'signup' ? 'Enter your name, email and password.' : 'Enter your email and password.');
+            }
+            if(password.length < 8) return showToast('Password must be at least 8 characters.');
+            if(!window.SUPABASE_CONFIGURED) return showToast('Add your Supabase URL and anon key first.');
+            try {
+                const result = mode === 'signup'
+                    ? await window.signUpWithPassword(email, password, name)
+                    : await window.signInWithPassword(email, password);
+                const authUser = result.user;
+                if(!authUser || !result.session) {
+                    return showToast('Check your email to confirm your account, then sign in.');
+                }
+                const displayName = name || authUser.user_metadata?.name || email.split('@')[0];
+                setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
+                await saveToSupabase('cslid_users', {id: authUser.id, name: displayName, email: authUser.email});
+                document.getElementById('auth-modal').classList.add('hidden');
+                document.getElementById('auth-modal').classList.remove('flex');
+                updateUserUI();
+                await hydrateFromSupabase();
+                showToast(mode === 'signup' ? 'Account created.' : 'Signed in.');
+            } catch(error) {
+                console.error('Supabase authentication failed:', error.message);
+                showToast(error.message || 'Authentication failed.');
+            }
         }
 
         function updateUserUI() {
@@ -379,8 +399,9 @@
 
         function saveStartup() {
             const user = getStore('cslid_user', {});
+            const ownerId = user.id || user.email;
             const startup = {
-                id: user.email || ('startup_' + Date.now()),
+                id: ownerId || ('startup_' + Date.now()),
                 name: document.getElementById('startup-name').value.trim(),
                 tagline: document.getElementById('startup-tagline').value.trim(),
                 stage: document.getElementById('startup-stage').value,
@@ -408,7 +429,7 @@
             setStore('cslid_startup', startup);
             saveToSupabase('cslid_startups', {
                 id: startup.id,
-                user_id: user.email || 'anonymous',
+                user_id: ownerId,
                 name: startup.name,
                 tagline: startup.tagline,
                 stage: startup.stage,
@@ -431,9 +452,10 @@
             setStore('cslid_posts', feedPosts);
             const post = feedPosts[0];
             const currentUser = getStore('cslid_user', {});
+            const ownerId = currentUser.id || currentUser.email;
             saveToSupabase('cslid_posts', {
                 id: post.id || `post_${Date.now()}`,
-                user_id: currentUser.email || 'anonymous',
+                user_id: ownerId,
                 author: post.author,
                 role: post.role,
                 post_time: post.time,
@@ -453,8 +475,8 @@
                 setStore('cslid_connections', connections);
                 const currentUser = getStore('cslid_user', {});
                 saveToSupabase('cslid_connections', {
-                    id: `${currentUser.email || 'anonymous'}_${name}`,
-                    user_id: currentUser.email || 'anonymous',
+                    id: `${currentUser.id}_${name}`,
+                    user_id: currentUser.id,
                     name
                 });
                 showToast(`Connection request sent to ${name}!`);
@@ -474,7 +496,8 @@
                 fetchFromSupabase('cslid_tasks')
             ]);
             const currentUser = getStore('cslid_user', {});
-            const userId = currentUser.email || 'anonymous';
+            const userId = currentUser.id;
+            if (!userId) return;
             const profiles = await fetchFromSupabase('cslid_profiles');
             const ownProfile = profiles.find(item => item.user_id === userId || item.id === userId);
             if (ownProfile) {
@@ -543,6 +566,15 @@
 
         // Initialize App on Load
         window.onload = async function() {
+            if (window.SUPABASE_CONFIGURED) {
+                const authUser = await window.getSupabaseUser();
+                if (authUser) {
+                    const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+                    setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
+                } else {
+                    localStorage.removeItem('cslid_user');
+                }
+            }
             await hydrateFromSupabase();
             refreshMatchProfiles();
             renderFeed();
@@ -683,8 +715,8 @@
         const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);
         const currentUser = user() || {};
         saveToSupabase('cslid_messages', {
-            id: `${currentUser.email || 'anonymous'}_${name}`,
-            user_id: currentUser.email || 'anonymous',
+        id: `${currentUser.id}_${name}`,
+        user_id: currentUser.id,
             thread_key: name,
             messages: all[name]
         });
@@ -771,8 +803,8 @@
         write('cslid_pitch_ready',true);
         const currentUser = user() || {};
         saveToSupabase('cslid_tasks', {
-            id: `${currentUser.email || 'anonymous'}_pitch_ready`,
-            user_id: currentUser.email || 'anonymous',
+            id: `${currentUser.id}_pitch_ready`,
+            user_id: currentUser.id,
             task_key: 'pitch_ready',
             complete: true
         });
