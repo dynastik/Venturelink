@@ -326,8 +326,8 @@
             <input id="auth-email" type="email" placeholder="Email" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
             <input id="auth-password" type="password" minlength="8" placeholder="Password (at least 8 characters)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white">
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="completeAuth('signup')" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Create account</button>
-                <button onclick="completeAuth('signin')" class="w-full py-3 rounded-xl bg-gray-900 border border-gray-700 text-white font-bold text-sm">Sign in</button>
+                    <button type="button" onclick="window.completeAuth('signup')" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Create account</button>
+                    <button type="button" onclick="window.completeAuth('signin')" class="w-full py-3 rounded-xl bg-gray-900 border border-gray-700 text-white font-bold text-sm">Sign in</button>
             </div>
             <p class="text-[10px] text-gray-500 text-center">Testing account only. Verify your email if Supabase asks you to.</p>
         </div>
