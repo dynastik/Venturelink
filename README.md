@@ -1,2 +1,0 @@
-# cslid.
-Tinder for startups
