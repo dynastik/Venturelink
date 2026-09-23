@@ -7,12 +7,14 @@
             SUPABASE_ANON_KEY !== "******" &&
             !SUPABASE_ANON_KEY.includes("your-actual")
         );
+        window.SUPABASE_CONFIGURED = SUPABASE_CONFIGURED;
+        window.SUPABASE_CONFIGURATION_ERROR = SUPABASE_CONFIGURED
+            ? ''
+            : 'Supabase is not configured. Add the anon public key in js/supabase.js.';
         const SUPABASE_BASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, "");
 
         // The anon key is designed for browser use; protect your database with RLS policies.
         const supabaseClient = window.supabase.createClient(SUPABASE_BASE_URL, SUPABASE_ANON_KEY);
-        window.SUPABASE_CONFIGURED = SUPABASE_CONFIGURED;
-
         async function loadData() {
             if (!SUPABASE_CONFIGURED) {
                 console.info("Supabase is ready for configuration. Add your project URL and anon key.");
