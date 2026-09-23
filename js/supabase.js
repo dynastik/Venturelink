@@ -1,7 +1,12 @@
-﻿// Paste the public values from your Supabase Dashboard here.
+// Paste the public values from your Supabase Dashboard here.
         const SUPABASE_URL = "https://tudqrcmdncncoqctfdrj.supabase.co/rest/v1/";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZHFyY21kbmNuY29xY3RmZHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzc3ODYsImV4cCI6MjEwNTY1Mzc4Nn0.BPcwINWu203NrWqj17-5wwcPqk8all8uhOhwmDr4860";
-        const SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("your-actual"));
+        const SUPABASE_CONFIGURED = Boolean(
+            SUPABASE_URL &&
+            SUPABASE_ANON_KEY &&
+            SUPABASE_ANON_KEY !== "******" &&
+            !SUPABASE_ANON_KEY.includes("your-actual")
+        );
         const SUPABASE_BASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, "");
 
         // The anon key is designed for browser use; protect your database with RLS policies.
@@ -34,7 +39,35 @@
             }
             return data || [];
         }
+        async function getSupabaseUser() {
+            if (!SUPABASE_CONFIGURED) return null;
+            const { data, error } = await supabaseClient.auth.getUser();
+            if (error) return null;
+            return data.user || null;
+        }
+        async function signUpWithPassword(email, password, name) {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: { data: { name } }
+            });
+            if (error) throw error;
+            return data;
+        }
+        async function signInWithPassword(email, password) {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            return data;
+        }
+        async function signOutUser() {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) throw error;
+        }
         window.saveToSupabase = saveToSupabase;
         window.fetchFromSupabase = fetchFromSupabase;
+        window.getSupabaseUser = getSupabaseUser;
+        window.signUpWithPassword = signUpWithPassword;
+        window.signInWithPassword = signInWithPassword;
+        window.signOutUser = signOutUser;
 
         loadData();
