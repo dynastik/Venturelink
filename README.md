@@ -18,6 +18,7 @@ This project is currently in testing. It is not yet ready for real users or prod
 - Investor pitch-generation prototype
 - Light and dark themes
 - Supabase client integration scaffold
+- Basic UI
 
 ## Repository structure
 
