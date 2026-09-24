@@ -1,4 +1,4 @@
-﻿body {
+body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: #090d16;
             color: #f3f4f6;
@@ -54,6 +54,10 @@
 .vl-row .grow{flex:1}.vl-muted{color:#8b8b8b;font-size:11px}.vl-input{width:100%;background:#0b0b0b;border:1px solid #2b2b2b;border-radius:10px;padding:10px 12px;color:#fff;outline:none}.vl-input:focus{border-color:#6366f1}
 .vl-tab{padding:8px 12px;border-radius:9px;border:1px solid #252525;background:#101010;color:#aaa;font-size:11px}.vl-tab.active{background:#fff;color:#090909}
 .vl-kpi{background:#101010;border:1px solid #252525;border-radius:14px;padding:14px}.vl-kpi strong{font-size:22px}.vl-kpi span{display:block;color:#777;font-size:10px;margin-top:3px}
+
+#toast {
+    z-index: 9999 !important;
+}
 
 :root {
         --paper: #f4f1ea;
@@ -242,8 +246,33 @@
         #tab-match > .relative { height: min(540px, 68vh) !important; min-height: 430px; }
         #active-card > div:first-child { height: 11rem !important; }
         #active-card .p-5 { padding: 1.1rem !important; }
-        #active-card .flex.items-center.justify-between { gap: .5rem; align-items: flex-start; flex-wrap: wrap; }
-        #active-card .flex.items-center.justify-between > span { font-size: 9px; }
+        #active-card > div:first-child .absolute.top-4 { right: 1rem; flex-wrap: wrap; }
+        #active-card > div:first-child .absolute.top-4 > span {
+            min-width: 0;
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            line-height: 1.25;
+        }
+        #active-card > div:first-child .absolute.bottom-4 { min-width: 0; }
+        #card-name, #card-tagline { overflow-wrap: anywhere; }
+        #card-name { line-height: 1.05; }
+        #card-tagline { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+        #active-card .flex.items-center.justify-between {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .65rem;
+            align-items: start;
+        }
+        #active-card .flex.items-center.justify-between > span {
+            min-width: 0;
+            font-size: 9px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+        #active-card .flex.items-center.justify-between > span span {
+            overflow-wrap: anywhere;
+        }
         #tab-match > .flex.items-center { margin-top: 1.5rem !important; gap: 1rem !important; }
         #tab-feed, #tab-directory, #tab-profile { padding-top: 0; }
         #tab-directory .flex.items-center.space-x-2 { width: 100%; overflow-x: auto; scrollbar-width: none; }
@@ -278,7 +307,13 @@
         #active-card > div:first-child { height: 9.5rem !important; flex: 0 0 9.5rem; }
         #active-card > div:last-child { min-height: 0; overflow-y: auto; }
         #card-name { font-size: 1.9rem !important; }
-        #active-card .flex.items-center.justify-between > span { flex: 1 1 30%; min-width: 0; line-height: 1.35; }
-        #active-card .flex.items-center.justify-between > span span { overflow-wrap: anywhere; }
+        #active-card .flex.items-center.justify-between {
+            grid-template-columns: 1fr;
+            gap: .45rem;
+        }
+        #active-card .flex.items-center.justify-between > span {
+            display: block;
+            font-size: 10px;
+        }
         #tab-match > .flex.items-center { margin-bottom: 1rem !important; }
     }
