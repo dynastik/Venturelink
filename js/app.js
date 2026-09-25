@@ -191,13 +191,13 @@
                     </div>
                     <div>
                         <div class="flex items-center justify-between">
-                            <h4 class="font-bold text-base text-white">${s.name}</h4>
-                            <span class="text-[10px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400">${s.sector}</span>
+                            <h4 class="font-bold text-base text-white">${escapeHtml(s.name)}</h4>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400">${escapeHtml(s.sector)}</span>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${s.location} • Stage: ${s.stage}</p>
+                        <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(s.location)} • Stage: ${escapeHtml(s.stage)}</p>
                     </div>
                     <div class="flex items-center justify-between pt-3 border-t border-gray-800 text-xs">
-                        <span class="text-emerald-400 font-bold"><i class="fa-solid fa-sack-dollar mr-1"></i> Seeking ${s.raise}</span>
+                        <span class="text-emerald-400 font-bold"><i class="fa-solid fa-sack-dollar mr-1"></i> Seeking ${escapeHtml(s.raise)}</span>
                         <button onclick="connectPersistently('${s.userId || s.id}')" class="connection-action px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition">${(() => {
                             const relationship = getConnectionBetween(currentUser.id, s.userId || s.id);
                             if (relationship?.status === 'accepted') return 'Connected';
