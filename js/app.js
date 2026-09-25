@@ -18,7 +18,7 @@
 
         function refreshMatchProfiles() {
             const startups = getRegisteredStartups();
-            matchProfiles = startups.map(s => ({
+            matchProfiles = startups.filter(s => s.isPublic !== false).map(s => ({
                 id: s.id,
                 name: s.name,
                 tagline: s.tagline,
@@ -505,6 +505,7 @@
                 document.getElementById('startup-seeking').value = startup.seeking || '';
                 document.getElementById('startup-traction').value = startup.traction || '';
                 document.getElementById('startup-contact').value = startup.contactUrl || '';
+                document.getElementById('startup-public').checked = startup.isPublic !== false;
             }
             document.getElementById('startup-modal').classList.remove('hidden');
             document.getElementById('startup-modal').classList.add('flex');
@@ -530,15 +531,19 @@
                 location: document.getElementById('startup-location').value.trim(),
                 seeking: document.getElementById('startup-seeking').value.trim(),
                 traction: document.getElementById('startup-traction').value.trim(),
-                contactUrl: document.getElementById('startup-contact').value.trim()
+                contactUrl: document.getElementById('startup-contact').value.trim(),
+                isPublic: document.getElementById('startup-public').checked
             };
 
-            if (!startup.name || !startup.tagline || !startup.contactUrl) {
-                return showToast('Add startup name, one-line description and a real contact page URL.');
+            if (!startup.name || !startup.tagline) {
+                return showToast('Add a startup name and one-line description before saving.');
             }
 
-            try { new URL(startup.contactUrl); }
-            catch(e) { return showToast('Enter a valid contact page URL starting with https://'); }
+            if (startup.isPublic) {
+                if (!startup.contactUrl) return showToast('Add a real contact page URL before publishing.');
+                try { new URL(startup.contactUrl); }
+                catch(e) { return showToast('Enter a valid contact page URL starting with https://'); }
+            }
 
             const startups = getRegisteredStartups();
             const idx = startups.findIndex(x => x.id === startup.id);
@@ -558,14 +563,15 @@
                 location: startup.location,
                 seeking: startup.seeking,
                 traction: startup.traction,
-                contact_url: startup.contactUrl
+                contact_url: startup.contactUrl || null,
+                is_public: startup.isPublic
             });
             if (window.SUPABASE_CONFIGURED && !savedStartup) {
                 return showToast('Could not save the startup profile. Please try again.');
             }
             closeStartupModal();
             refreshMatchProfiles();
-            showToast('Startup is now live in the investor swipe deck!');
+            showToast(startup.isPublic ? 'Startup is now live in the investor swipe deck!' : 'Startup saved as a private draft.');
         }
 
         function getConnectionRows() {
@@ -663,7 +669,8 @@
                 stage: startup.stage || 'Early Stage',
                 location: startup.location || 'Location not provided',
                 raise: startup.seeking || 'Not specified',
-                image: startup.image || null
+                image: startup.image || null,
+                isPublic: startup.is_public !== false
             }));
             setStore('cslid_startups', startups.map(startup => ({
                 id: startup.id,
@@ -675,7 +682,8 @@
                 location: startup.location,
                 seeking: startup.seeking,
                 traction: startup.traction,
-                contactUrl: startup.contact_url
+                contactUrl: startup.contact_url,
+                isPublic: startup.is_public !== false
             })));
             const ownStartup = startups.find(item => item.user_id === userId || item.id === userId);
             if (ownStartup) {
@@ -683,7 +691,7 @@
                     id: ownStartup.id, name: ownStartup.name, tagline: ownStartup.tagline,
                     stage: ownStartup.stage, sector: ownStartup.sector, problem: ownStartup.problem,
                     location: ownStartup.location, seeking: ownStartup.seeking, traction: ownStartup.traction,
-                    contactUrl: ownStartup.contact_url
+                    contactUrl: ownStartup.contact_url, isPublic: ownStartup.is_public !== false
                 };
                 setStore('cslid_startup', localStartup);
             }
@@ -745,10 +753,17 @@
         window.onload = async function() {
             window.setAuthMode('signup');
             if (window.SUPABASE_CONFIGURED) {
-                const authUser = await window.getSupabaseUser();
+                const session = await window.getSupabaseSession();
+                const authUser = session?.user || null;
                 if (authUser) {
                     const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
-                    setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email, role: authUser.user_metadata?.role || ''});
+                    const previousUser = getStore('cslid_user', {});
+                    setStore('cslid_user', {
+                        id: authUser.id,
+                        name: displayName,
+                        email: authUser.email,
+                        role: authUser.user_metadata?.role || previousUser.role || ''
+                    });
                 } else {
                     localStorage.removeItem('cslid_user');
                 }
@@ -785,6 +800,8 @@
                             role: authUser.user_metadata?.role || getStore('cslid_user', {}).role || ''
                         });
                         updateUserUI();
+                        hydrateFromSupabase();
+                        startRealtimeUpdates();
                     } else if (event === 'SIGNED_OUT') {
                         if (unsubscribeFromRealtime) {
                             unsubscribeFromRealtime();

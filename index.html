@@ -314,7 +314,7 @@
                 <h3 class="text-base font-bold"><i class="fa-solid fa-rocket text-indigo-400 mr-2"></i>My Startup</h3>
                 <button onclick="closeStartupModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <p class="text-xs text-gray-400">Create your startup profile. Published profiles appear in the investor swipe deck on this device.</p>
+            <p class="text-xs text-gray-400">Save a private draft first, then publish it when your profile is ready for investors.</p>
             <input id="startup-name" type="text" placeholder="Startup name" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
             <input id="startup-tagline" type="text" placeholder="One-line description" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
             <select id="startup-stage" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
@@ -326,7 +326,11 @@
             <input id="startup-seeking" type="text" placeholder="Funding sought e.g. ₹50L" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
             <input id="startup-traction" type="text" placeholder="Traction e.g. 20 pilot customers" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
             <input id="startup-contact" type="url" placeholder="Real contact page URL (https://...)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white">
-            <button onclick="saveStartup();setTimeout(renderLaunchCenter,50)" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Save Startup</button>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-950/50 p-3 text-xs text-gray-300">
+                <input id="startup-public" type="checkbox" checked class="accent-indigo-600">
+                <span><strong class="text-white">Publish to investors</strong><br><span class="text-gray-500">Published profiles appear in Match Deck and Directory.</span></span>
+            </label>
+            <button onclick="saveStartup();setTimeout(renderLaunchCenter,50)" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm">Save startup</button>
         </div>
     </div>
 

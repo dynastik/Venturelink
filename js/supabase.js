@@ -14,7 +14,13 @@
         const SUPABASE_BASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, "");
 
         // The anon key is designed for browser use; protect your database with RLS policies.
-        const supabaseClient = window.supabase.createClient(SUPABASE_BASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_BASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
         async function loadData() {
             if (!SUPABASE_CONFIGURED) {
                 console.info("Supabase is ready for configuration. Add your project URL and anon key.");
@@ -81,10 +87,21 @@
             if (!SUPABASE_CONFIGURED) return null;
             const { data, error } = await supabaseClient.auth.getUser();
             if (error) {
-                console.error('Supabase user lookup failed:', error.message);
+                if (error.message !== 'Auth session missing!') {
+                    console.error('Supabase user lookup failed:', error.message);
+                }
                 return null;
             }
             return data.user || null;
+        }
+        async function getSupabaseSession() {
+            if (!SUPABASE_CONFIGURED) return null;
+            const { data, error } = await supabaseClient.auth.getSession();
+            if (error) {
+                console.error('Supabase session lookup failed:', error.message);
+                return null;
+            }
+            return data.session || null;
         }
         async function requireSupabaseUser() {
             const user = await getSupabaseUser();
@@ -131,6 +148,7 @@
         window.callSupabaseFunction = callSupabaseFunction;
         window.subscribeToSupabaseChanges = subscribeToSupabaseChanges;
         window.getSupabaseUser = getSupabaseUser;
+        window.getSupabaseSession = getSupabaseSession;
         window.requireSupabaseUser = requireSupabaseUser;
         window.onSupabaseAuthStateChange = onSupabaseAuthStateChange;
         window.signUpWithPassword = signUpWithPassword;

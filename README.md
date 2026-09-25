@@ -49,6 +49,8 @@ The current MVP includes:
 - Conversation previews and local unread-message indicators for accepted connections
 - Automatic Supabase refresh while signed in, plus a manual Connections refresh button
 - Supabase Realtime updates for messages, connections, and matches
+- Persistent browser sessions with automatic token refresh
+- Founder startup drafts with explicit publish/unpublish control
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
 
