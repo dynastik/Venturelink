@@ -13,6 +13,8 @@ drop table if exists public.cslid_posts cascade;
 drop table if exists public.cslid_startups cascade;
 drop table if exists public.cslid_profiles cascade;
 drop table if exists public.cslid_users cascade;
+drop table if exists public.cslid_reports cascade;
+drop table if exists public.cslid_blocks cascade;
 
 create table if not exists public.cslid_users (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -106,11 +108,30 @@ create table if not exists public.cslid_tasks (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.cslid_blocks (
+  blocker_id uuid not null references auth.users(id) on delete cascade,
+  blocked_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+
+create table if not exists public.cslid_reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references auth.users(id) on delete cascade,
+  reported_id uuid not null references auth.users(id) on delete cascade,
+  reason text not null check (char_length(reason) between 1 and 1000),
+  created_at timestamptz not null default now(),
+  check (reporter_id <> reported_id)
+);
+
 create index if not exists cslid_users_email_idx on public.cslid_users (email);
 create index if not exists cslid_connections_status_idx on public.cslid_connections (status);
 create index if not exists cslid_connections_users_idx on public.cslid_connections (requester_id, recipient_id);
 create index if not exists cslid_messages_thread_idx on public.cslid_messages (thread_key, created_at desc);
 create index if not exists cslid_startups_public_idx on public.cslid_startups (is_public, user_id);
+create index if not exists cslid_blocks_blocked_idx on public.cslid_blocks (blocked_id);
+create index if not exists cslid_reports_reported_idx on public.cslid_reports (reported_id, created_at desc);
 
 -- Enable live updates for the inbox and connection lifecycle.
 do $$
@@ -172,6 +193,8 @@ alter table public.cslid_connections enable row level security;
 alter table public.cslid_matches enable row level security;
 alter table public.cslid_messages enable row level security;
 alter table public.cslid_tasks enable row level security;
+alter table public.cslid_blocks enable row level security;
+alter table public.cslid_reports enable row level security;
 
 create policy "Users can read own account" on public.cslid_users
   for select to authenticated using (id = auth.uid());
@@ -295,3 +318,187 @@ create policy "Users can delete own sent messages" on public.cslid_messages
 
 create policy "Users manage own tasks" on public.cslid_tasks
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create policy "Users can view their own blocks" on public.cslid_blocks
+  for select to authenticated using (blocker_id = auth.uid());
+create policy "Users can create their own blocks" on public.cslid_blocks
+  for insert to authenticated with check (blocker_id = auth.uid() and blocked_id <> auth.uid());
+create policy "Users can delete their own blocks" on public.cslid_blocks
+  for delete to authenticated using (blocker_id = auth.uid());
+
+create policy "Users can create reports" on public.cslid_reports
+  for insert to authenticated with check (reporter_id = auth.uid() and reported_id <> auth.uid());
+create policy "Users can view their own reports" on public.cslid_reports
+  for select to authenticated using (reporter_id = auth.uid());
+
+create or replace function public.is_blocked_between(first_user uuid, second_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.cslid_blocks
+    where (blocker_id = first_user and blocked_id = second_user)
+       or (blocker_id = second_user and blocked_id = first_user)
+  );
+$$;
+
+create or replace function public.enforce_action_limits()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  recent_count integer;
+begin
+  if tg_table_name = 'cslid_connections' and new.status = 'requested'
+     and (tg_op = 'INSERT' or old.status <> 'requested') then
+    if public.is_blocked_between(new.requester_id, new.recipient_id) then
+      raise exception 'This user is blocked';
+    end if;
+    select count(*) into recent_count
+    from public.cslid_connections
+    where requester_id = new.requester_id
+      and status = 'requested'
+      and created_at > now() - interval '24 hours';
+    if recent_count >= 20 then
+      raise exception 'Daily connection request limit reached';
+    end if;
+  elsif tg_table_name = 'cslid_messages' then
+    if public.is_blocked_between(new.sender_id, new.recipient_id) then
+      raise exception 'This user is blocked';
+    end if;
+    select count(*) into recent_count
+    from public.cslid_messages
+    where sender_id = new.sender_id
+      and created_at > now() - interval '1 hour';
+    if recent_count >= 100 then
+      raise exception 'Hourly message limit reached';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.is_blocked_between(uuid, uuid) from public;
+grant execute on function public.is_blocked_between(uuid, uuid) to authenticated;
+revoke all on function public.enforce_action_limits() from public;
+
+create trigger cslid_connection_action_limit
+before insert or update on public.cslid_connections
+for each row execute function public.enforce_action_limits();
+
+create trigger cslid_message_action_limit
+before insert on public.cslid_messages
+for each row execute function public.enforce_action_limits();
+
+create or replace function public.block_user(p_blocked_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_blocked_id is null or p_blocked_id = auth.uid() then
+    raise exception 'Invalid user to block';
+  end if;
+  insert into public.cslid_blocks (blocker_id, blocked_id)
+  values (auth.uid(), p_blocked_id)
+  on conflict do nothing;
+  delete from public.cslid_connections
+  where (requester_id = auth.uid() and recipient_id = p_blocked_id)
+     or (requester_id = p_blocked_id and recipient_id = auth.uid());
+  delete from public.cslid_messages
+  where (sender_id = auth.uid() and recipient_id = p_blocked_id)
+     or (sender_id = p_blocked_id and recipient_id = auth.uid());
+  return true;
+end;
+$$;
+
+create or replace function public.report_user(p_reported_id uuid, p_reason text)
+returns public.cslid_reports
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  report_row public.cslid_reports;
+begin
+  if p_reported_id is null or p_reported_id = auth.uid()
+     or char_length(trim(coalesce(p_reason, ''))) = 0 then
+    raise exception 'Invalid report';
+  end if;
+  insert into public.cslid_reports (reporter_id, reported_id, reason)
+  values (auth.uid(), p_reported_id, left(trim(p_reason), 1000))
+  returning * into report_row;
+  return report_row;
+end;
+$$;
+
+create or replace function public.export_my_data()
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'exported_at', now(),
+    'user', (select to_jsonb(u) from public.cslid_users u where u.id = auth.uid()),
+    'profile', (select to_jsonb(p) from public.cslid_profiles p where p.user_id = auth.uid()),
+    'startups', coalesce((select jsonb_agg(to_jsonb(s)) from public.cslid_startups s where s.user_id = auth.uid()), '[]'::jsonb),
+    'posts', coalesce((select jsonb_agg(to_jsonb(p)) from public.cslid_posts p where p.user_id = auth.uid()), '[]'::jsonb),
+    'connections', coalesce((select jsonb_agg(to_jsonb(c)) from public.cslid_connections c where c.requester_id = auth.uid() or c.recipient_id = auth.uid()), '[]'::jsonb),
+    'messages', coalesce((select jsonb_agg(to_jsonb(m)) from public.cslid_messages m where m.sender_id = auth.uid() or m.recipient_id = auth.uid()), '[]'::jsonb),
+    'tasks', coalesce((select jsonb_agg(to_jsonb(t)) from public.cslid_tasks t where t.user_id = auth.uid()), '[]'::jsonb),
+    'blocks', coalesce((select jsonb_agg(to_jsonb(b)) from public.cslid_blocks b where b.blocker_id = auth.uid()), '[]'::jsonb),
+    'reports', coalesce((select jsonb_agg(to_jsonb(r)) from public.cslid_reports r where r.reporter_id = auth.uid()), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.delete_my_account()
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  delete from auth.users where id = auth.uid();
+  return true;
+end;
+$$;
+
+revoke all on function public.block_user(uuid) from public;
+grant execute on function public.block_user(uuid) to authenticated;
+revoke all on function public.report_user(uuid, text) from public;
+grant execute on function public.report_user(uuid, text) to authenticated;
+revoke all on function public.export_my_data() from public;
+grant execute on function public.export_my_data() to authenticated;
+revoke all on function public.delete_my_account() from public;
+grant execute on function public.delete_my_account() to authenticated;
+
+drop policy if exists "Users can create connection requests" on public.cslid_connections;
+create policy "Users can create connection requests" on public.cslid_connections
+  for insert to authenticated
+  with check (
+    requester_id = auth.uid()
+    and recipient_id <> auth.uid()
+    and not public.is_blocked_between(requester_id, recipient_id)
+  );
+
+drop policy if exists "Users can send messages" on public.cslid_messages;
+create policy "Users can send messages" on public.cslid_messages
+  for insert to authenticated
+  with check (
+    sender_id = auth.uid()
+    and recipient_id <> auth.uid()
+    and not public.is_blocked_between(sender_id, recipient_id)
+    and exists (
+      select 1 from public.cslid_connections c
+      where ((c.requester_id = sender_id and c.recipient_id = recipient_id)
+          or (c.requester_id = recipient_id and c.recipient_id = sender_id))
+        and c.status = 'accepted'
+    )
+  );

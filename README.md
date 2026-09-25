@@ -52,6 +52,13 @@ The current MVP includes:
 - Persistent browser sessions with automatic token refresh
 - Founder startup drafts with explicit publish/unpublish control
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
+- Basic safety controls: server-enforced connection/message limits, block/report actions, data export, and account deletion
+
+## Safety and account controls
+
+Run the current `supabase-schema.sql` in the Supabase SQL Editor before using these controls. The schema enforces a maximum of 20 new connection requests per account per 24 hours and 100 messages per account per hour, in addition to the browser’s immediate feedback limits. Users can report or block a person from an open message thread. Blocking removes the connection and conversation and prevents new requests or messages in either direction.
+
+From **Profile**, a signed-in user can download a JSON export of their account data or permanently delete the account and associated application data. Account deletion is irreversible. Keep a backup of important data before testing it.
 
 
 ## License

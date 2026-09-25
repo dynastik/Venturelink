@@ -324,6 +324,49 @@
             showToast('Profile saved!');
         }
 
+        function allowLocalAction(key, limit, windowMs) {
+            const now = Date.now();
+            const timestamps = getStore(key, []).filter(value => now - value < windowMs);
+            if (timestamps.length >= limit) return false;
+            timestamps.push(now);
+            setStore(key, timestamps);
+            return true;
+        }
+
+        function clearLocalAccountData() {
+            Object.keys(localStorage)
+                .filter(key => key.startsWith('cslid_'))
+                .forEach(key => localStorage.removeItem(key));
+        }
+
+        window.exportMyData = async function() {
+            const currentUser = getStore('cslid_user', {});
+            if (!currentUser.id) return showToast('Sign in before exporting your data.');
+            if (!window.SUPABASE_CONFIGURED) return showToast('Supabase is not configured.');
+            const data = await window.callSupabaseFunction('export_my_data');
+            if (!data) return showToast('Could not export your data. Please try again.');
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `cslid-data-${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Your data export has been downloaded.');
+        };
+
+        window.deleteMyAccount = async function() {
+            const currentUser = getStore('cslid_user', {});
+            if (!currentUser.id) return showToast('Sign in before deleting your account.');
+            if (!window.SUPABASE_CONFIGURED) return showToast('Supabase is not configured.');
+            if (!window.confirm('Delete your account and all cslid. data permanently? This cannot be undone.')) return;
+            const result = await window.callSupabaseFunction('delete_my_account');
+            if (result === null) return showToast('Could not delete your account. Please try again.');
+            clearLocalAccountData();
+            try { await window.signOutUser(); } catch (error) { console.info('Session ended after account deletion.'); }
+            window.location.reload();
+        };
+
         // ------------------------------------------------------------
         // PERSISTENT MVP LAYER
         // This keeps the existing UI, but makes the core interactions
@@ -598,6 +641,9 @@
             const currentUser = getStore('cslid_user', {});
             if (!currentUser.id) return showToast('Sign in before sending a connection request.');
             if (!recipientId || recipientId === currentUser.id) return showToast('You cannot connect with your own account.');
+            if (!allowLocalAction('cslid_connection_attempts', 20, 24 * 60 * 60 * 1000)) {
+                return showToast('Daily connection request limit reached. Try again tomorrow.');
+            }
             const existing = getConnectionRows();
             const relationship = getConnectionBetween(currentUser.id, recipientId);
             if (relationship?.status === 'accepted') return showToast('You are already connected.');
@@ -1059,6 +1105,26 @@
     window.renderConnections?.();
     const el=document.getElementById('message-modal');el.classList.remove('hidden');el.classList.add('flex');
   };
+  window.blockCurrentUser=async function(){
+    const recipientId=document.getElementById('message-modal')?.dataset.recipientId;
+    if(!recipientId) return showToast('This user cannot be blocked.');
+    if(!window.confirm('Block this user? They will no longer be able to connect or message you.')) return;
+    const result=await window.callSupabaseFunction('block_user',{p_blocked_id:recipientId});
+    if(result===null) return showToast('Could not block this user. Please try again.');
+    window.closeMessageModal();
+    await hydrateFromSupabase();
+    window.renderConnections?.();
+    showToast('User blocked.');
+  };
+  window.reportCurrentUser=async function(){
+    const recipientId=document.getElementById('message-modal')?.dataset.recipientId;
+    if(!recipientId) return showToast('This user cannot be reported.');
+    const reason=window.prompt('Why are you reporting this user?');
+    if(!reason || !reason.trim()) return;
+    const result=await window.callSupabaseFunction('report_user',{p_reported_id:recipientId,p_reason:reason.trim()});
+    if(result===null) return showToast('Could not submit the report. Please try again.');
+    showToast('Report submitted. Thank you.');
+  };
   window.closeMessageModal=function(){
     const el=document.getElementById('message-modal');
     el.classList.add('hidden');
@@ -1080,6 +1146,9 @@
         if (!recipientId || recipientId === currentUser.id) return showToast('This directory entry cannot receive messages yet.');
         const relationship=getConnectionBetween(currentUser.id,recipientId);
         if(!relationship || relationship.status!=='accepted') return showToast('Messaging is available after the connection is accepted.');
+        if (!allowLocalAction('cslid_message_attempts', 100, 60 * 60 * 1000)) {
+          return showToast('Hourly message limit reached. Please try again later.');
+        }
         const saved=await saveToSupabase('cslid_messages', {
             sender_id: currentUser.id,
             recipient_id: recipientId,
