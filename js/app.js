@@ -305,7 +305,8 @@
             };
             setStore('cslid_profile', profile);
             const currentUser = getStore('cslid_user', {});
-            const ownerId = currentUser.id || currentUser.email;
+            const ownerId = currentUser.id;
+            if (!ownerId) return showToast('Sign in before saving your profile.');
             saveToSupabase('cslid_profiles', {
                 id: ownerId,
                 user_id: ownerId,
@@ -330,25 +331,30 @@
 
         async function completeAuth(mode = 'signup') {
             const name = document.getElementById('auth-name')?.value.trim() || '';
+            const role = document.getElementById('auth-role')?.value || '';
             const email = document.getElementById('auth-email')?.value.trim() || '';
             const password = document.getElementById('auth-password')?.value || '';
-            if(!email || !password || (mode === 'signup' && !name)) {
-                return showToast(mode === 'signup' ? 'Enter your name, email and password.' : 'Enter your email and password.');
+            if(!email || !password || (mode === 'signup' && (!name || !role))) {
+                return showToast(mode === 'signup' ? 'Enter your name, role, email and password.' : 'Enter your email and password.');
             }
             if(password.length < 8) return showToast('Password must be at least 8 characters.');
             if(!window.SUPABASE_CONFIGURED) return showToast('Add your Supabase URL and anon key first.');
             try {
                 showToast(mode === 'signup' ? 'Creating account...' : 'Signing in...');
                 const result = mode === 'signup'
-                    ? await window.signUpWithPassword(email, password, name)
+                    ? await window.signUpWithPassword(email, password, name, role)
                     : await window.signInWithPassword(email, password);
                 const authUser = result.user;
                 if(!authUser || !result.session) {
                     return showToast('Check your email to confirm your account, then sign in.');
                 }
                 const displayName = name || authUser.user_metadata?.name || email.split('@')[0];
-                setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
-                await saveToSupabase('cslid_users', {id: authUser.id, name: displayName, email: authUser.email});
+                const accountRole = role || authUser.user_metadata?.role;
+                if (!accountRole) {
+                    return showToast('Your account has no role yet. Sign out and create a new account with a role.');
+                }
+                setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
+                await saveToSupabase('cslid_users', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
                 document.getElementById('auth-modal').classList.add('hidden');
                 document.getElementById('auth-modal').classList.remove('flex');
                 updateUserUI();
@@ -360,6 +366,25 @@
             }
         }
         window.completeAuth = completeAuth;
+
+        window.signOutCurrentUser = async function() {
+            if (!window.SUPABASE_CONFIGURED) {
+                return showToast('Supabase is not configured.');
+            }
+            try {
+                await window.signOutUser();
+                localStorage.removeItem('cslid_user');
+                localStorage.removeItem('cslid_profile');
+                localStorage.removeItem('cslid_startup');
+                updateUserUI();
+                document.getElementById('auth-modal').classList.remove('hidden');
+                document.getElementById('auth-modal').classList.add('flex');
+                showToast('You have been signed out.');
+            } catch (error) {
+                console.error('Supabase sign-out failed:', error.message);
+                showToast(error.message || 'Sign-out failed. Please try again.');
+            }
+        };
 
         function updateUserUI() {
             const user = getStore('cslid_user', null);
@@ -401,9 +426,10 @@
 
         function saveStartup() {
             const user = getStore('cslid_user', {});
-            const ownerId = user.id || user.email;
+            const ownerId = user.id;
+            if (!ownerId) return showToast('Sign in before creating a startup profile.');
             const startup = {
-                id: ownerId || ('startup_' + Date.now()),
+                id: ownerId,
                 name: document.getElementById('startup-name').value.trim(),
                 tagline: document.getElementById('startup-tagline').value.trim(),
                 stage: document.getElementById('startup-stage').value,
@@ -454,7 +480,8 @@
             setStore('cslid_posts', feedPosts);
             const post = feedPosts[0];
             const currentUser = getStore('cslid_user', {});
-            const ownerId = currentUser.id || currentUser.email;
+            const ownerId = currentUser.id;
+            if (!ownerId) return showToast('Sign in before publishing an update.');
             saveToSupabase('cslid_posts', {
                 id: post.id || `post_${Date.now()}`,
                 user_id: ownerId,
@@ -476,6 +503,7 @@
                 connections.push(name);
                 setStore('cslid_connections', connections);
                 const currentUser = getStore('cslid_user', {});
+                if (!currentUser.id) return showToast('Sign in before sending a connection request.');
                 saveToSupabase('cslid_connections', {
                     id: `${currentUser.id}_${name}`,
                     user_id: currentUser.id,
@@ -572,7 +600,7 @@
                 const authUser = await window.getSupabaseUser();
                 if (authUser) {
                     const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
-                    setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
+                    setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email, role: authUser.user_metadata?.role || ''});
                 } else {
                     localStorage.removeItem('cslid_user');
                 }
@@ -589,6 +617,20 @@
                     document.getElementById('auth-modal').classList.remove('hidden');
                     document.getElementById('auth-modal').classList.add('flex');
                 }, 250);
+            }
+            if (window.onSupabaseAuthStateChange) {
+                window.onSupabaseAuthStateChange((event, authUser) => {
+                    if (authUser) {
+                        const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+                        setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
+                        updateUserUI();
+                    } else if (event === 'SIGNED_OUT') {
+                        localStorage.removeItem('cslid_user');
+                        localStorage.removeItem('cslid_profile');
+                        localStorage.removeItem('cslid_startup');
+                        updateUserUI();
+                    }
+                });
             }
         };
 
@@ -716,6 +758,7 @@
     if(!text)return;
         const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);
         const currentUser = user() || {};
+        if (!currentUser.id) return showToast('Sign in before sending messages.');
         saveToSupabase('cslid_messages', {
         id: `${currentUser.id}_${name}`,
         user_id: currentUser.id,
