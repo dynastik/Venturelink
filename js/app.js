@@ -5,6 +5,7 @@
         let matchProfiles = [];
         let activeMessageRecipientId = '';
         let refreshInProgress = false;
+        let unsubscribeFromRealtime = null;
 
         function getRegisteredStartups() {
             try { return JSON.parse(localStorage.getItem('cslid_startups') || '[]'); }
@@ -421,6 +422,7 @@
                 document.getElementById('auth-modal').classList.remove('flex');
                 updateUserUI();
                 await hydrateFromSupabase();
+                startRealtimeUpdates();
                 openRoleHome();
                 showToast(mode === 'signup' ? 'Account created.' : 'Signed in.');
             } catch(error) {
@@ -717,10 +719,27 @@
 
         window.refreshConnections = async function() {
             if (!getStore('cslid_user', null)) return showToast('Sign in to refresh your connections.');
-            await hydrateFromSupabase();
-            window.renderConnections?.();
-            showToast('Connections refreshed.');
+            const button = document.getElementById('connections-refresh-button');
+            const label = button?.querySelector('span');
+            if (button) button.disabled = true;
+            if (label) label.textContent = 'Refreshing...';
+            try {
+                await hydrateFromSupabase();
+                window.renderConnections?.();
+                showToast('Connections refreshed.');
+            } finally {
+                if (button) button.disabled = false;
+                if (label) label.textContent = 'Refresh connections';
+            }
         };
+
+        function startRealtimeUpdates() {
+            if (unsubscribeFromRealtime) unsubscribeFromRealtime();
+            if (!window.subscribeToSupabaseChanges) return;
+            unsubscribeFromRealtime = window.subscribeToSupabaseChanges(() => {
+                hydrateFromSupabase();
+            });
+        }
 
         // Initialize App on Load
         window.onload = async function() {
@@ -735,6 +754,7 @@
                 }
             }
             await hydrateFromSupabase();
+            startRealtimeUpdates();
             refreshMatchProfiles();
             renderFeed();
             filterDirectory('all');
@@ -766,6 +786,10 @@
                         });
                         updateUserUI();
                     } else if (event === 'SIGNED_OUT') {
+                        if (unsubscribeFromRealtime) {
+                            unsubscribeFromRealtime();
+                            unsubscribeFromRealtime = null;
+                        }
                         localStorage.removeItem('cslid_user');
                         localStorage.removeItem('cslid_profile');
                         localStorage.removeItem('cslid_startup');

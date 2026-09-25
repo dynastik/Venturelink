@@ -63,6 +63,20 @@
             }
             return data;
         }
+        function subscribeToSupabaseChanges(callback) {
+            if (!SUPABASE_CONFIGURED) return () => {};
+            const channel = supabaseClient
+                .channel('cslid-live-updates')
+                .on('postgres_changes', {event: '*', schema: 'public', table: 'cslid_messages'}, callback)
+                .on('postgres_changes', {event: '*', schema: 'public', table: 'cslid_connections'}, callback)
+                .on('postgres_changes', {event: '*', schema: 'public', table: 'cslid_matches'}, callback)
+                .subscribe((status) => {
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.error(`Supabase realtime subscription ${status.toLowerCase()}.`);
+                    }
+                });
+            return () => supabaseClient.removeChannel(channel);
+        }
         async function getSupabaseUser() {
             if (!SUPABASE_CONFIGURED) return null;
             const { data, error } = await supabaseClient.auth.getUser();
@@ -115,6 +129,7 @@
         window.fetchFromSupabase = fetchFromSupabase;
         window.updateSupabase = updateSupabase;
         window.callSupabaseFunction = callSupabaseFunction;
+        window.subscribeToSupabaseChanges = subscribeToSupabaseChanges;
         window.getSupabaseUser = getSupabaseUser;
         window.requireSupabaseUser = requireSupabaseUser;
         window.onSupabaseAuthStateChange = onSupabaseAuthStateChange;

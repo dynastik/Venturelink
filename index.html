@@ -207,8 +207,8 @@
                 <h1 class="text-2xl font-bold">Connections</h1>
                 <p class="text-sm text-gray-400">Manage requests and message people after a connection is accepted.</p>
                 </div>
-                <button onclick="refreshConnections()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 text-xs font-bold hover:border-indigo-500 transition">
-                    <i class="fa-solid fa-rotate mr-1"></i>Refresh
+                <button id="connections-refresh-button" onclick="refreshConnections()" class="shrink-0 px-3 py-2 rounded-xl bg-indigo-600 border border-indigo-500 text-white text-xs font-bold hover:bg-indigo-500 transition">
+                    <i class="fa-solid fa-rotate mr-1"></i><span>Refresh connections</span>
                 </button>
             </div>
             <div id="connections-content" class="space-y-6"></div>

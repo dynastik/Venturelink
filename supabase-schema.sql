@@ -112,6 +112,30 @@ create index if not exists cslid_connections_users_idx on public.cslid_connectio
 create index if not exists cslid_messages_thread_idx on public.cslid_messages (thread_key, created_at desc);
 create index if not exists cslid_startups_public_idx on public.cslid_startups (is_public, user_id);
 
+-- Enable live updates for the inbox and connection lifecycle.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'cslid_messages'
+  ) then
+    alter publication supabase_realtime add table public.cslid_messages;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'cslid_connections'
+  ) then
+    alter publication supabase_realtime add table public.cslid_connections;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'cslid_matches'
+  ) then
+    alter publication supabase_realtime add table public.cslid_matches;
+  end if;
+end;
+$$;
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
