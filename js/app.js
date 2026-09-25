@@ -903,6 +903,7 @@
     const outgoing=rows.filter(item=>item.requester_id===current.id&&item.status==='requested');
     const accepted=rows.filter(item=>item.status==='accepted');
     const messages=read(K.messages,{});
+    const readState=read('cslid_message_read', {});
     const section=(title,items,body,empty)=>`
       <section class="glass p-5 rounded-3xl border border-gray-800 space-y-3">
         <div class="flex items-center justify-between"><h2 class="text-sm font-bold">${title}</h2><span class="vl-pill">${items.length}</span></div>
@@ -923,8 +924,10 @@
         const other=otherId(connection);
         const thread=messages[other]||[];
         const last=thread[thread.length-1];
+        const unread=thread.filter(item=>!item.me && new Date(item.time||0).getTime() > (readState[other]||0)).length;
         return `<button onclick="openConnectionMessage('${other}')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-bold"><i class="fa-regular fa-message mr-1"></i>Message</button>
-          ${last?`<span class="hidden sm:inline text-[10px] text-gray-500 max-w-32 truncate">${escapeHtml(last.text)}</span>`:''}`;
+          ${last?`<span class="hidden sm:inline text-[10px] text-gray-500 max-w-32 truncate">${escapeHtml(last.text)}</span>`:''}
+          ${unread?`<span class="min-w-5 h-5 px-1 rounded-full bg-pink-600 text-white text-[10px] font-bold inline-flex items-center justify-center">${unread}</span>`:''}`;
       }),'Accepted connections will appear here.');
   };
 
@@ -980,20 +983,27 @@
       showToast('Messaging is available after the connection is accepted.');
       return;
     }
-    document.getElementById('message-title').innerHTML=`Message <span class="text-indigo-400">${name}</span>`;
+    const title=document.getElementById('message-title');
+    title.textContent=`Message ${name}`;
     document.getElementById('message-modal').dataset.person=name;
     document.getElementById('message-modal').dataset.recipientId=recipientId || '';
-    renderMessages(name);
+    document.getElementById('message-modal').dataset.threadKey=recipientId || '';
+    const readState=read('cslid_message_read',{});
+    readState[recipientId]=Date.now();
+    write('cslid_message_read',readState);
+    renderMessages(recipientId);
+    window.renderConnections?.();
     const el=document.getElementById('message-modal');el.classList.remove('hidden');el.classList.add('flex');
   };
   window.closeMessageModal=function(){const el=document.getElementById('message-modal');el.classList.add('hidden');el.classList.remove('flex')};
-  function renderMessages(name){
+  function renderMessages(threadKey){
     const all=read(K.messages,{});
-    const arr=all[name]||[];
+    const arr=all[threadKey]||[];
     document.getElementById('message-thread').innerHTML=arr.length?arr.map(m=>`<div class="${m.me?'text-right':''}"><span class="inline-block max-w-[85%] rounded-xl px-3 py-2 text-xs ${m.me?'bg-indigo-600':'bg-gray-900 text-gray-300'}">${escapeHtml(m.text)}</span></div>`).join(''):`<div class="text-center text-gray-600 text-xs py-16">No messages yet. Start the conversation.</div>`;
   }
   window.sendMessage=async function(){
-    const input=document.getElementById('message-input'), text=input.value.trim(), name=document.getElementById('message-modal').dataset.person;
+    const modal=document.getElementById('message-modal');
+    const input=document.getElementById('message-input'), text=input.value.trim(), name=modal.dataset.person;
     if(!text)return;
         const currentUser = user() || {};
         if (!currentUser.id) return showToast('Sign in before sending messages.');
@@ -1008,8 +1018,9 @@
             content: text
         });
         if(window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the message. Please try again.');
-        const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:saved?.created_at||Date.now()});write(K.messages,all);
-        input.value='';renderMessages(name);showToast('Message saved');
+        const threadKey=modal.dataset.threadKey||recipientId;
+        const all=read(K.messages,{});all[threadKey]=all[threadKey]||[];all[threadKey].push({text,me:true,time:saved?.created_at||Date.now()});write(K.messages,all);
+        input.value='';renderMessages(threadKey);window.renderConnections?.();showToast('Message saved');
   };
 
   window.openPublicStartup=function(){

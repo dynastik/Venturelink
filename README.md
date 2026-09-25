@@ -46,6 +46,7 @@ The current MVP includes:
 - Connection lifecycle: pending request, founder accept/reject, and shared match creation
 - Central Connections screen for incoming, sent, and accepted connections
 - Messaging restricted to accepted connections
+- Conversation previews and local unread-message indicators for accepted connections
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
 
