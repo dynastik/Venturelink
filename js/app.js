@@ -103,7 +103,7 @@
             document.getElementById('card-traction').innerText = profile.traction;
             document.getElementById('card-bio').innerText = profile.bio;
             document.getElementById('card-tags').innerHTML =
-                profile.tags.map(t => `<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-gray-800/80 border border-gray-700 text-indigo-300">#${t}</span>`).join('');
+                profile.tags.map(t => `<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-gray-800/80 border border-gray-700 text-indigo-300">#${escapeHtml(t)}</span>`).join('');
         }
 
         let matchedProfile = null;
@@ -160,7 +160,7 @@
                         <button class="text-gray-500 hover:text-white"><i class="fa-solid fa-ellipsis"></i></button>
                     </div>
                     <p class="text-sm text-gray-300 leading-relaxed">${escapeHtml(post.content)}</p>
-                    ${post.image ? `<div class="rounded-2xl overflow-hidden border border-gray-800 max-h-72"><img src="${post.image}" class="w-full h-full object-cover"></div>` : ''}
+                    ${post.image ? `<div class="rounded-2xl overflow-hidden border border-gray-800 max-h-72"><img src="${escapeHtml(post.image)}" class="w-full h-full object-cover"></div>` : ''}
                     <div class="flex flex-wrap gap-1.5">
                         ${(post.tags || []).map(t => `<span class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400">#${escapeHtml(t)}</span>`).join('')}
                     </div>
@@ -187,7 +187,7 @@
             grid.innerHTML = filtered.map(s => `
                 <div data-user-id="${s.userId || s.id}" class="glass p-5 rounded-3xl border border-gray-800 space-y-4 hover:border-indigo-500/50 transition">
                     <div class="h-36 rounded-2xl overflow-hidden bg-gray-800">
-                        <img src="${s.image}" class="w-full h-full object-cover">
+                        <img src="${escapeHtml(s.image)}" class="w-full h-full object-cover">
                     </div>
                     <div>
                         <div class="flex items-center justify-between">
