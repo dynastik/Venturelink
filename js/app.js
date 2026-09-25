@@ -3,6 +3,8 @@
         // Investors then see those published profiles in the swipe deck.
         let currentProfileIndex = 0;
         let matchProfiles = [];
+        let activeMessageRecipientId = '';
+        let refreshInProgress = false;
 
         function getRegisteredStartups() {
             try { return JSON.parse(localStorage.getItem('cslid_startups') || '[]'); }
@@ -615,7 +617,9 @@
         }
 
         async function hydrateFromSupabase() {
-            if (!window.SUPABASE_CONFIGURED) return;
+            if (!window.SUPABASE_CONFIGURED || refreshInProgress) return;
+            refreshInProgress = true;
+            try {
             const [posts, startups, connections, matches, messages, tasks] = await Promise.all([
                 fetchFromSupabase('cslid_posts'),
                 fetchFromSupabase('cslid_startups'),
@@ -703,7 +707,20 @@
             if (document.getElementById('tab-connections') && !document.getElementById('tab-connections').classList.contains('hidden')) {
                 window.renderConnections?.();
             }
+            if (activeMessageRecipientId && !document.getElementById('message-modal').classList.contains('hidden')) {
+                renderMessages(activeMessageRecipientId);
+            }
+            } finally {
+                refreshInProgress = false;
+            }
         }
+
+        window.refreshConnections = async function() {
+            if (!getStore('cslid_user', null)) return showToast('Sign in to refresh your connections.');
+            await hydrateFromSupabase();
+            window.renderConnections?.();
+            showToast('Connections refreshed.');
+        };
 
         // Initialize App on Load
         window.onload = async function() {
@@ -756,6 +773,11 @@
                     }
                 });
             }
+            window.setInterval(() => {
+                if (window.SUPABASE_CONFIGURED && getStore('cslid_user', null)) {
+                    hydrateFromSupabase();
+                }
+            }, 15000);
         };
 
 /* ============================================================
@@ -988,6 +1010,7 @@
     document.getElementById('message-modal').dataset.person=name;
     document.getElementById('message-modal').dataset.recipientId=recipientId || '';
     document.getElementById('message-modal').dataset.threadKey=recipientId || '';
+    activeMessageRecipientId=recipientId || '';
     const readState=read('cslid_message_read',{});
     readState[recipientId]=Date.now();
     write('cslid_message_read',readState);
@@ -995,7 +1018,12 @@
     window.renderConnections?.();
     const el=document.getElementById('message-modal');el.classList.remove('hidden');el.classList.add('flex');
   };
-  window.closeMessageModal=function(){const el=document.getElementById('message-modal');el.classList.add('hidden');el.classList.remove('flex')};
+  window.closeMessageModal=function(){
+    const el=document.getElementById('message-modal');
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+    activeMessageRecipientId='';
+  };
   function renderMessages(threadKey){
     const all=read(K.messages,{});
     const arr=all[threadKey]||[];

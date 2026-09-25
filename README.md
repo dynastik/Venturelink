@@ -47,6 +47,7 @@ The current MVP includes:
 - Central Connections screen for incoming, sent, and accepted connections
 - Messaging restricted to accepted connections
 - Conversation previews and local unread-message indicators for accepted connections
+- Automatic Supabase refresh while signed in, plus a manual Connections refresh button
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
 
