@@ -126,6 +126,22 @@ body {
     .bg-gradient-to-r.from-indigo-600,
     .bg-gradient-to-tr.from-indigo-600 { background: var(--sage-dark) !important; }
     nav .nav-btn.bg-indigo-600 { color: #fff !important; box-shadow: none !important; }
+    #auth-modal button[onclick*="signin"] {
+        background: var(--sage-dark) !important;
+        border-color: var(--sage-dark) !important;
+        color: #fff !important;
+        box-shadow: 0 8px 18px rgba(61, 93, 70, .16);
+    }
+    #auth-modal button[onclick*="signin"]:hover {
+        background: var(--sage) !important;
+        border-color: var(--sage) !important;
+    }
+    #auth-modal input, #auth-modal select {
+        background: var(--white) !important;
+        border-color: var(--line) !important;
+        color: var(--ink) !important;
+    }
+    #auth-modal input::placeholder { color: var(--muted) !important; }
 
     main { max-width: 1320px !important; padding-top: 3.5rem !important; padding-bottom: 5rem !important; }
     #tab-match { min-height: 82vh !important; justify-content: flex-start !important; padding-top: 2.5rem; }
@@ -141,6 +157,7 @@ body {
         backdrop-filter: none !important;
     }
     #active-card { border-radius: 18px !important; }
+    #active-card { touch-action: pan-y; will-change: transform, opacity; }
     #tab-match .absolute.w-\[92\%\], #tab-match .absolute.w-\[96\%\] { background: var(--paper-deep) !important; border-color: var(--line) !important; box-shadow: none !important; }
     #active-card > div:first-child { height: 13rem !important; background: linear-gradient(135deg, #dce5d8, #f7f5ef 72%) !important; }
     #active-card > div:first-child:before { content: 'cslid. / match deck'; position: absolute; top: 1.5rem; left: 1.5rem; color: var(--sage-dark); font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
