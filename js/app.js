@@ -449,7 +449,15 @@
 
         function updateUserUI() {
             const user = getStore('cslid_user', null);
-            if(!user) return;
+            const matchNav = document.getElementById('nav-btn-match');
+            const launchButton = document.getElementById('launch-center-nav');
+            const connectionsNav = document.getElementById('nav-btn-connections');
+            if (!user) {
+                if (matchNav) matchNav.style.display = '';
+                if (launchButton) launchButton.style.display = '';
+                if (connectionsNav) connectionsNav.style.display = '';
+                return;
+            }
             const isFounder = user.role === 'founder';
             const labels = document.querySelectorAll('#nav-btn-profile span');
             if(labels.length) labels[0].innerText = user.name;
@@ -464,12 +472,18 @@
             if(nameInput) nameInput.value = profile.name || user.name || '';
             if(startupInput) startupInput.value = profile.startup || '';
             if(bio) bio.innerText = profile.startup || (isFounder ? 'Add your startup focus and investment interests.' : 'Connect with founders and explore the startup directory.');
-            const matchNav = document.getElementById('nav-btn-match');
-            const launchButton = document.getElementById('launch-center-nav');
-            const connectionsNav = document.getElementById('nav-btn-connections');
-            if (matchNav) matchNav.hidden = isFounder;
-            if (launchButton) launchButton.hidden = !isFounder;
-            if (connectionsNav) connectionsNav.hidden = false;
+            if (matchNav) {
+                matchNav.hidden = isFounder;
+                matchNav.style.display = isFounder ? 'none' : '';
+            }
+            if (launchButton) {
+                launchButton.hidden = !isFounder;
+                launchButton.style.display = isFounder ? '' : 'none';
+            }
+            if (connectionsNav) {
+                connectionsNav.hidden = false;
+                connectionsNav.style.display = '';
+            }
         }
 
         function openStartupModal() {
@@ -888,6 +902,7 @@
     const incoming=rows.filter(item=>item.recipient_id===current.id&&item.status==='requested');
     const outgoing=rows.filter(item=>item.requester_id===current.id&&item.status==='requested');
     const accepted=rows.filter(item=>item.status==='accepted');
+    const messages=read(K.messages,{});
     const section=(title,items,body,empty)=>`
       <section class="glass p-5 rounded-3xl border border-gray-800 space-y-3">
         <div class="flex items-center justify-between"><h2 class="text-sm font-bold">${title}</h2><span class="vl-pill">${items.length}</span></div>
@@ -904,8 +919,13 @@
         <button onclick="respondToConnection('${request.id}','accept')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">Accept</button>
         <button onclick="respondToConnection('${request.id}','reject')" class="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 text-[10px] font-bold">Reject</button>`),'No incoming requests right now.')+
       section('Sent requests',outgoing,item=>personRow(item,()=>'<span class="px-3 py-2 rounded-lg bg-gray-800 text-gray-400 text-[10px] font-bold">Pending</span>'),'Requests you send will appear here.')+
-      section('Accepted connections',accepted,item=>personRow(item,connection=>`
-        <button onclick="openConnectionMessage('${otherId(connection)}')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-bold"><i class="fa-regular fa-message mr-1"></i>Message</button>`),'Accepted connections will appear here.');
+      section('Accepted connections',accepted,item=>personRow(item,connection=>{
+        const other=otherId(connection);
+        const thread=messages[other]||[];
+        const last=thread[thread.length-1];
+        return `<button onclick="openConnectionMessage('${other}')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-bold"><i class="fa-regular fa-message mr-1"></i>Message</button>
+          ${last?`<span class="hidden sm:inline text-[10px] text-gray-500 max-w-32 truncate">${escapeHtml(last.text)}</span>`:''}`;
+      }),'Accepted connections will appear here.');
   };
 
   window.respondToConnection=async function(connectionId, action){
