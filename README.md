@@ -48,7 +48,6 @@ The current MVP includes:
 - Messaging restricted to accepted connections
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
-Before inviting real beta users, run `supabase-schema.sql` in the Supabase SQL Editor and manually test two confirmed accounts: one founder and one investor. The default Supabase email provider is rate-limited, so configure custom SMTP before relying on confirmation or reset emails at scale. The project is still an MVP and should not be used to store sensitive investment information.
 
 ## License
 
