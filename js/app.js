@@ -109,7 +109,7 @@
                 : 'translateX(120%) rotate(20deg)';
             card.style.opacity = '0';
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 card.style.transform = 'none';
                 card.style.opacity = '1';
 
@@ -118,20 +118,8 @@
                     if (!currentUser.id) {
                         showToast('Sign in before connecting.');
                     } else if (profile.id && profile.id !== currentUser.id) {
-                        saveToSupabase('cslid_connections', {
-                            requester_id: currentUser.id,
-                            recipient_id: profile.id,
-                            status: 'requested'
-                        });
+                        await connectPersistently(profile.id);
                     }
-
-                    // Acceptance takes the investor directly to the real contact
-                    // page supplied by the startup.
-                    if (profile.contactUrl) {
-                        window.location.href = profile.contactUrl;
-                        return;
-                    }
-
                     openMatchModal(profile);
                 }
 
@@ -178,6 +166,7 @@
             if(active) active.className = "dir-filter px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white whitespace-nowrap";
 
             const filtered = sector === 'all' ? directoryStartups : directoryStartups.filter(s => s.sector === sector);
+            const currentUser = getStore('cslid_user', {});
             const grid = document.getElementById('directory-grid');
             grid.innerHTML = filtered.map(s => `
                 <div data-user-id="${s.userId || s.id}" class="glass p-5 rounded-3xl border border-gray-800 space-y-4 hover:border-indigo-500/50 transition">
@@ -193,7 +182,12 @@
                     </div>
                     <div class="flex items-center justify-between pt-3 border-t border-gray-800 text-xs">
                         <span class="text-emerald-400 font-bold"><i class="fa-solid fa-sack-dollar mr-1"></i> Seeking ${s.raise}</span>
-                        <button onclick="connectPersistently('${s.userId || s.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition">Connect</button>
+                        <button onclick="connectPersistently('${s.userId || s.id}')" class="connection-action px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition">${(() => {
+                            const relationship = getConnectionBetween(currentUser.id, s.userId || s.id);
+                            if (relationship?.status === 'accepted') return 'Connected';
+                            if (relationship?.status === 'requested') return relationship.requester_id === currentUser.id ? 'Pending' : 'Respond';
+                            return 'Connect';
+                        })()}</button>
                     </div>
                 </div>
             `).join('');
@@ -229,12 +223,10 @@
         function openMatchModal(profile) {
             matchedProfile = profile || null;
             document.getElementById('match-modal-text').innerText = profile
-                ? `You accepted ${profile.name}. Open the real contact page provided by the startup.`
-                : 'Connection accepted.';
+                ? `Your connection request to ${profile.name} was sent. You can message them after they accept.`
+                : 'Connection request sent.';
             const btn = document.getElementById('match-contact-btn');
-            if (btn) btn.innerText = profile && profile.contactUrl
-                ? 'Open Startup Contact Page'
-                : 'Contact page unavailable';
+            if (btn) btn.innerText = 'Keep swiping';
             document.getElementById('match-modal').classList.remove('hidden');
             document.getElementById('match-modal').classList.add('flex');
         }
@@ -405,6 +397,13 @@
                 }
                 setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
                 await saveToSupabase('cslid_users', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
+                await saveToSupabase('cslid_profiles', {
+                    id: authUser.id,
+                    user_id: authUser.id,
+                    role: accountRole,
+                    name: displayName,
+                    is_public: true
+                });
                 document.getElementById('auth-modal').classList.add('hidden');
                 document.getElementById('auth-modal').classList.remove('flex');
                 updateUserUI();
@@ -537,21 +536,53 @@
             showToast('Startup is now live in the investor swipe deck!');
         }
 
+        function getConnectionRows() {
+            return getStore('cslid_connections', []).map(item =>
+                typeof item === 'string'
+                    ? {recipient_id: item, status: 'requested'}
+                    : item
+            );
+        }
+
+        function getConnectionBetween(firstId, secondId) {
+            return getConnectionRows().find(item =>
+                (item.requester_id === firstId && item.recipient_id === secondId) ||
+                (item.requester_id === secondId && item.recipient_id === firstId)
+            );
+        }
+
+        function getOtherConnectionUser(connection, userId) {
+            return connection.requester_id === userId ? connection.recipient_id : connection.requester_id;
+        }
+
         // Send a real participant-based connection request.
         async function connectPersistently(recipientId) {
             const currentUser = getStore('cslid_user', {});
             if (!currentUser.id) return showToast('Sign in before sending a connection request.');
             if (!recipientId || recipientId === currentUser.id) return showToast('You cannot connect with your own account.');
-            const existing = getStore('cslid_connections', []);
-            if (existing.includes(recipientId)) return showToast('You already sent a connection request.');
-            const saved = await saveToSupabase('cslid_connections', {
+            const existing = getConnectionRows();
+            const relationship = getConnectionBetween(currentUser.id, recipientId);
+            if (relationship?.status === 'accepted') return showToast('You are already connected.');
+            if (relationship?.status === 'requested') {
+                return showToast(relationship.requester_id === currentUser.id
+                    ? 'Your connection request is pending.'
+                    : 'This person has already requested to connect.');
+            }
+            const saved = relationship?.status === 'rejected' && relationship.requester_id === currentUser.id
+                ? await window.updateSupabase('cslid_connections', {id: relationship.id}, {status: 'requested'})
+                : await saveToSupabase('cslid_connections', {
+                    requester_id: currentUser.id,
+                    recipient_id: recipientId,
+                    status: 'requested'
+                });
+            if (window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the connection request.');
+            existing.push(saved || {
                 requester_id: currentUser.id,
                 recipient_id: recipientId,
                 status: 'requested'
             });
-            if (window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the connection request.');
-            existing.push(recipientId);
             setStore('cslid_connections', existing);
+            filterDirectory('all');
             showToast('Connection request sent!');
         }
 
@@ -569,6 +600,7 @@
             const userId = currentUser.id;
             if (!userId) return;
             const profiles = await fetchFromSupabase('cslid_profiles');
+            setStore('cslid_public_profiles', profiles);
             const ownProfile = profiles.find(item => item.user_id === userId || item.id === userId);
             if (ownProfile) {
                 setStore('cslid_profile', {name: ownProfile.name || '', startup: ownProfile.startup || ''});
@@ -622,10 +654,11 @@
                 setStore('cslid_startup', localStartup);
             }
             setStore('cslid_connections', connections
-                .filter(item => item.requester_id === userId || item.recipient_id === userId)
-                .map(item => item.recipient_id === userId ? item.requester_id : item.recipient_id));
+                .filter(item => item.requester_id === userId || item.recipient_id === userId));
             setStore('cslid_matches', matches.filter(item => item.user_id === userId || item.matched_user_id === userId).map(item => ({
-                id: item.id, userId: item.matched_user_id, matchedAt: item.matched_at
+                id: item.id,
+                userId: item.user_id === userId ? item.matched_user_id : item.user_id,
+                matchedAt: item.matched_at
             })));
             const threads = {};
             messages.forEach(item => {
@@ -736,19 +769,22 @@
 
   function renderLaunchCenter(){
     const s=startup(), u=user(), con=read(K.connections,[]), posts=read(K.posts,[]);
+    const connectionRows=con.map(item=>typeof item==='string'?{recipient_id:item,status:'requested'}:item);
+    const incoming=connectionRows.filter(item=>item.recipient_id===u?.id && item.status==='requested');
+    const matches=connectionRows.filter(item=>item.status==='accepted');
     const checks=[
       ['Account created',!!u,'Create your founder account'],
       ['Startup created',!!s,'Add your startup details'],
       ['Startup description',!!(s&&s.tagline),'Add a clear one-line pitch'],
       ['Problem defined',!!(s&&s.problem),'Explain the problem'],
       ['First post',posts.length>0,'Publish your first journey update'],
-      ['First connection',con.length>0,'Connect with someone in the directory'],
+      ['First connection',matches.length>0,'Connect with someone in the directory'],
     ['Pitch ready',read('cslid_pitch_ready',false),'Complete your pitch deck'],
       ['Launch page',!!s,'Preview your public startup page']
     ];
     const done=checks.filter(x=>x[1]).length, pct=Math.round(done/checks.length*100);
     document.getElementById('launch-kpis').innerHTML=[
-      ['Progress',pct+'%'],['Posts',posts.length],['Connections',con.length],['Stage',s?.stage||'—']
+      ['Progress',pct+'%'],['Posts',posts.length],['Connections',matches.length],['Stage',s?.stage||'—']
     ].map(x=>`<div class="vl-kpi"><strong>${x[1]}</strong><span>${x[0]}</span></div>`).join('');
 
     const actionMap={
@@ -770,7 +806,47 @@
         <div class="grow"><p class="text-xs font-bold">${x[0]}</p><p class="vl-muted">${x[1]?'Completed':x[2]}</p></div>
         ${!x[1] && actionMap[x[0]] ? `<button onclick="launchChecklistAction('${actionMap[x[0]]}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold">Do it</button>`:''}
       </div>`).join('');
+
+    const publicProfiles=read('cslid_public_profiles',[]);
+    const startups=read('cslid_startups',[]);
+    const labelFor=(id)=>{
+      const profile=publicProfiles.find(item=>item.user_id===id||item.id===id);
+      const startupRecord=startups.find(item=>item.user_id===id||item.id===id);
+      return profile?.name || startupRecord?.name || `User ${String(id||'').slice(0,8)}`;
+    };
+    const requests=document.getElementById('launch-connections');
+    if(!requests) return;
+    requests.innerHTML=incoming.length ? `
+      <div class="flex items-center justify-between">
+        <h4 class="text-sm font-bold">Incoming connection requests</h4>
+        <span class="vl-pill">${incoming.length}</span>
+      </div>
+      ${incoming.map(item=>{
+        const requester=item.requester_id;
+        return `<div class="vl-row">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center"><i class="fa-solid fa-user text-indigo-400 text-xs"></i></div>
+          <div class="grow"><p class="text-xs font-bold">${escapeHtml(labelFor(requester))}</p><p class="vl-muted">Would like to connect with you</p></div>
+          <div class="flex gap-2">
+            <button onclick="respondToConnection('${item.id}','accept')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">Accept</button>
+            <button onclick="respondToConnection('${item.id}','reject')" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 text-[10px] font-bold">Reject</button>
+          </div>
+        </div>`;
+      }).join('')}` :
+      `<div class="rounded-2xl border border-gray-800 bg-gray-950/40 p-4"><p class="text-xs font-bold">Connection requests</p><p class="text-[10px] text-gray-500 mt-1">Incoming requests will appear here when someone wants to connect.</p></div>`;
   }
+
+  window.respondToConnection=async function(connectionId, action){
+    const currentUser=user()||{};
+    if(!currentUser.id) return showToast('Sign in before managing connection requests.');
+    if(!connectionId) return showToast('This connection request is missing its id.');
+    if(!window.SUPABASE_CONFIGURED) return showToast('Supabase is not configured.');
+    const functionName=action==='accept'?'accept_connection':'reject_connection';
+    const result=await window.callSupabaseFunction(functionName,{p_connection_id:connectionId});
+    if(!result) return showToast(`Could not ${action} the connection request.`);
+    await hydrateFromSupabase();
+    renderLaunchCenter();
+    showToast(action==='accept'?'Connection accepted. You can now message each other.':'Connection request rejected.');
+  };
 
   window.launchChecklistAction=function(action){
     closeLaunchCenter();
@@ -805,6 +881,12 @@
   window.goToDirectory=function(){closeLaunchCenter();switchTab('directory');};
 
   window.openMessageModal=function(name, recipientId){
+    const currentUser=user()||{};
+    const relationship=getConnectionBetween(currentUser.id,recipientId);
+    if(!relationship || relationship.status!=='accepted'){
+      showToast('Messaging is available after the connection is accepted.');
+      return;
+    }
     document.getElementById('message-title').innerHTML=`Message <span class="text-indigo-400">${name}</span>`;
     document.getElementById('message-modal').dataset.person=name;
     document.getElementById('message-modal').dataset.recipientId=recipientId || '';
@@ -817,20 +899,23 @@
     const arr=all[name]||[];
     document.getElementById('message-thread').innerHTML=arr.length?arr.map(m=>`<div class="${m.me?'text-right':''}"><span class="inline-block max-w-[85%] rounded-xl px-3 py-2 text-xs ${m.me?'bg-indigo-600':'bg-gray-900 text-gray-300'}">${escapeHtml(m.text)}</span></div>`).join(''):`<div class="text-center text-gray-600 text-xs py-16">No messages yet. Start the conversation.</div>`;
   }
-  window.sendMessage=function(){
+  window.sendMessage=async function(){
     const input=document.getElementById('message-input'), text=input.value.trim(), name=document.getElementById('message-modal').dataset.person;
     if(!text)return;
-        const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);
         const currentUser = user() || {};
         if (!currentUser.id) return showToast('Sign in before sending messages.');
         const recipientId = document.getElementById('message-modal').dataset.recipientId;
         if (!recipientId || recipientId === currentUser.id) return showToast('This directory entry cannot receive messages yet.');
-        saveToSupabase('cslid_messages', {
+        const relationship=getConnectionBetween(currentUser.id,recipientId);
+        if(!relationship || relationship.status!=='accepted') return showToast('Messaging is available after the connection is accepted.');
+        const saved=await saveToSupabase('cslid_messages', {
             sender_id: currentUser.id,
             recipient_id: recipientId,
             thread_key: [currentUser.id, recipientId].sort().join(':'),
             content: text
         });
+        if(window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the message. Please try again.');
+        const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:saved?.created_at||Date.now()});write(K.messages,all);
         input.value='';renderMessages(name);showToast('Message saved');
   };
 

@@ -41,6 +41,28 @@
             }
             return data || [];
         }
+        async function updateSupabase(table, filters, changes) {
+            if (!SUPABASE_CONFIGURED) return null;
+            let query = supabaseClient.from(table).update(changes).select().single();
+            Object.entries(filters || {}).forEach(([column, value]) => {
+                query = query.eq(column, value);
+            });
+            const { data, error } = await query;
+            if (error) {
+                console.error(`Supabase ${table} update failed:`, error.message);
+                return null;
+            }
+            return data;
+        }
+        async function callSupabaseFunction(name, parameters = {}) {
+            if (!SUPABASE_CONFIGURED) return null;
+            const { data, error } = await supabaseClient.rpc(name, parameters);
+            if (error) {
+                console.error(`Supabase function ${name} failed:`, error.message);
+                return null;
+            }
+            return data;
+        }
         async function getSupabaseUser() {
             if (!SUPABASE_CONFIGURED) return null;
             const { data, error } = await supabaseClient.auth.getUser();
@@ -91,6 +113,8 @@
         }
         window.saveToSupabase = saveToSupabase;
         window.fetchFromSupabase = fetchFromSupabase;
+        window.updateSupabase = updateSupabase;
+        window.callSupabaseFunction = callSupabaseFunction;
         window.getSupabaseUser = getSupabaseUser;
         window.requireSupabaseUser = requireSupabaseUser;
         window.onSupabaseAuthStateChange = onSupabaseAuthStateChange;

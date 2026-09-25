@@ -34,24 +34,19 @@ cslid/
     └── supabase.js         # Supabase client and database helpers
 ```
 
-## Testing status
+## Current testing status
 
-Before the first public release, this project still needs:
+The current MVP includes:
 
-- Supabase Auth with email/password or magic-link login
-- Session restoration and logout
-- Founder and investor roles
-- Ownership-based RLS policies
-- Authenticated UUID-based user identities
-- Secure validation of user input and URLs
-- Safer rendering of database content
-- Structured fundraising fields
-- Real connection-request and match states
-- Error handling and loading states
-- Mobile and cross-browser testing
-- Backup and moderation procedures
+- Supabase email/password authentication, session restoration, logout, and password reset
+- Founder and investor roles with role-aware navigation
+- UUID-based identities and ownership-based RLS policies
+- Persistent startup profiles, journey posts, connection requests, matches, and messages
+- Connection lifecycle: pending request, founder accept/reject, and shared match creation
+- Messaging restricted to accepted connections
+- Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
-The current application contains prototype/demo behavior, including local browser storage and incomplete authentication. It should not yet be used to store sensitive user information or confidential investment data.
+Before inviting real beta users, run `supabase-schema.sql` in the Supabase SQL Editor and manually test two confirmed accounts: one founder and one investor. The default Supabase email provider is rate-limited, so configure custom SMTP before relying on confirmation or reset emails at scale. The project is still an MVP and should not be used to store sensitive investment information.
 
 ## License
 

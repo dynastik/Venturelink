@@ -158,6 +158,8 @@ create policy "Users can update own account" on public.cslid_users
 
 create policy "Users manage own profile" on public.cslid_profiles
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "Public profiles can be discovered" on public.cslid_profiles
+  for select to anon, authenticated using (is_public = true);
 
 create policy "Public profiles and startup discovery" on public.cslid_startups
   for select to anon, authenticated using (is_public = true or user_id = auth.uid());
@@ -194,6 +196,69 @@ create policy "Users can create own match rows" on public.cslid_matches
 create policy "Users can update own match rows" on public.cslid_matches
   for update to authenticated using (user_id = auth.uid() or matched_user_id = auth.uid())
   with check ((user_id = auth.uid() or matched_user_id = auth.uid()) and user_id <> matched_user_id);
+
+-- Accepting a request must update the connection and create the match together.
+-- The function inserts one match row visible to both participants through RLS.
+create or replace function public.accept_connection(p_connection_id uuid)
+returns public.cslid_connections
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  connection_row public.cslid_connections;
+begin
+  select * into connection_row
+  from public.cslid_connections
+  where id = p_connection_id
+    and recipient_id = auth.uid()
+    and status = 'requested'
+  for update;
+
+  if connection_row.id is null then
+    raise exception 'Connection request not found or not actionable';
+  end if;
+
+  update public.cslid_connections
+  set status = 'accepted'
+  where id = connection_row.id
+  returning * into connection_row;
+
+  insert into public.cslid_matches (user_id, matched_user_id, connection_id)
+  values (connection_row.requester_id, connection_row.recipient_id, connection_row.id)
+  on conflict (connection_id) do nothing;
+
+  return connection_row;
+end;
+$$;
+
+create or replace function public.reject_connection(p_connection_id uuid)
+returns public.cslid_connections
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  connection_row public.cslid_connections;
+begin
+  update public.cslid_connections
+  set status = 'rejected'
+  where id = p_connection_id
+    and recipient_id = auth.uid()
+    and status = 'requested'
+  returning * into connection_row;
+
+  if connection_row.id is null then
+    raise exception 'Connection request not found or not actionable';
+  end if;
+  return connection_row;
+end;
+$$;
+
+revoke all on function public.accept_connection(uuid) from public;
+grant execute on function public.accept_connection(uuid) to authenticated;
+revoke all on function public.reject_connection(uuid) from public;
+grant execute on function public.reject_connection(uuid) to authenticated;
 
 create policy "Users can view their message threads" on public.cslid_messages
   for select to authenticated using (sender_id = auth.uid() or recipient_id = auth.uid());
