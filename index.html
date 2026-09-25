@@ -36,7 +36,7 @@
 
     <!-- Navigation Header -->
     <header class="glass sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex items-center justify-between border-b border-gray-800/80">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('match')">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="openRoleHome()">
             <div class="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-black/10">
                 <img src="favicon.svg" alt="cslid logo" class="w-full h-full object-cover">
             </div>
@@ -60,11 +60,15 @@
                 <i class="fa-solid fa-compass text-cyan-400"></i>
                 <span>Directory</span>
             </button>
+            <button onclick="switchTab('connections')" id="nav-btn-connections" class="nav-btn px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-gray-800/50">
+                <i class="fa-solid fa-handshake text-emerald-400"></i>
+                <span>Connections</span>
+            </button>
         </nav>
 
         <!-- Right User Profile CTA -->
         <div class="flex items-center space-x-3">
-            <button onclick="openLaunchCenter()" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gray-800/80 border border-gray-700 text-white font-medium text-sm hover:border-indigo-500 transition">
+            <button id="launch-center-nav" onclick="openLaunchCenter()" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gray-800/80 border border-gray-700 text-white font-medium text-sm hover:border-indigo-500 transition">
                 <i class="fa-solid fa-rocket text-indigo-400 text-xs"></i>
                 <span>Launch Center</span>
             </button>
@@ -196,7 +200,16 @@
             </div>
         </section>
 
-        <!-- TAB 5: MY PROFILE -->
+        <!-- TAB 5: CONNECTIONS -->
+        <section id="tab-connections" class="tab-content hidden max-w-4xl mx-auto space-y-6">
+            <div>
+                <h1 class="text-2xl font-bold">Connections</h1>
+                <p class="text-sm text-gray-400">Manage requests and message people after a connection is accepted.</p>
+            </div>
+            <div id="connections-content" class="space-y-6"></div>
+        </section>
+
+        <!-- TAB 6: MY PROFILE -->
         <section id="tab-profile" class="tab-content hidden max-w-2xl mx-auto space-y-6">
             <div class="glass p-6 rounded-3xl border border-gray-800 text-center relative overflow-hidden">
                 <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-indigo-600 via-pink-600 to-amber-500 opacity-30"></div>

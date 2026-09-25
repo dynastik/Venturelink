@@ -39,6 +39,11 @@
 
         // Tab Switching Logic
         function switchTab(tabId) {
+            const role = getStore('cslid_user', {}).role;
+            if (tabId === 'match' && role === 'founder') {
+                showToast('Match Deck is available to investor accounts.');
+                tabId = 'connections';
+            }
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
 
@@ -49,7 +54,15 @@
             if(activeBtn) {
                 activeBtn.className = "nav-btn px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/30";
             }
+            if (tabId === 'connections' && typeof window.renderConnections === 'function') {
+                window.renderConnections();
+            }
         }
+
+        window.openRoleHome = function() {
+            const role = getStore('cslid_user', {}).role;
+            switchTab(role === 'founder' ? 'connections' : 'match');
+        };
 
         // Subtool Toggle Logic
         function switchToolSub(subId) {
@@ -406,6 +419,7 @@
                 document.getElementById('auth-modal').classList.remove('flex');
                 updateUserUI();
                 await hydrateFromSupabase();
+                openRoleHome();
                 showToast(mode === 'signup' ? 'Account created.' : 'Signed in.');
             } catch(error) {
                 console.error('Supabase authentication failed:', error.message);
@@ -451,9 +465,11 @@
             if(startupInput) startupInput.value = profile.startup || '';
             if(bio) bio.innerText = profile.startup || (isFounder ? 'Add your startup focus and investment interests.' : 'Connect with founders and explore the startup directory.');
             const matchNav = document.getElementById('nav-btn-match');
-            const launchButton = document.querySelector('header button[onclick="openLaunchCenter()"]');
-            if (matchNav) matchNav.hidden = !isFounder ? false : true;
+            const launchButton = document.getElementById('launch-center-nav');
+            const connectionsNav = document.getElementById('nav-btn-connections');
+            if (matchNav) matchNav.hidden = isFounder;
             if (launchButton) launchButton.hidden = !isFounder;
+            if (connectionsNav) connectionsNav.hidden = false;
         }
 
         function openStartupModal() {
@@ -670,6 +686,9 @@
             renderFeed();
             filterDirectory('all');
             refreshMatchProfiles();
+            if (document.getElementById('tab-connections') && !document.getElementById('tab-connections').classList.contains('hidden')) {
+                window.renderConnections?.();
+            }
         }
 
         // Initialize App on Load
@@ -689,6 +708,7 @@
             renderFeed();
             filterDirectory('all');
             updateUserUI();
+            if (getStore('cslid_user', null)) openRoleHome();
 
             // First-run account gate.
             if(!getStore('cslid_user', null)) {
@@ -832,6 +852,61 @@
       }).join('')}` :
       `<div class="rounded-2xl border border-gray-800 bg-gray-950/40 p-4"><p class="text-xs font-bold">Connection requests</p><p class="text-[10px] text-gray-500 mt-1">Incoming requests will appear here when someone wants to connect.</p></div>`;
   }
+
+  window.openConnectionMessage=function(recipientId){
+    const profiles=read('cslid_public_profiles',[]);
+    const startups=read('cslid_startups',[]);
+    const profile=profiles.find(item=>item.user_id===recipientId||item.id===recipientId);
+    const startupRecord=startups.find(item=>item.user_id===recipientId||item.id===recipientId);
+    const name=profile?.name||startupRecord?.name||'Connection';
+    openMessageModal(name,recipientId);
+  };
+
+  window.renderConnections=function(){
+    const container=document.getElementById('connections-content');
+    if(!container) return;
+    const current=user()||{};
+    if(!current.id){
+      container.innerHTML='<div class="glass p-6 rounded-3xl border border-gray-800"><p class="text-sm font-bold">Sign in to view your connections.</p></div>';
+      return;
+    }
+    const rows=read(K.connections,[])
+      .map(item=>typeof item==='string'?{recipient_id:item,status:'requested'}:item)
+      .filter(item=>item.requester_id===current.id||item.recipient_id===current.id);
+    const profiles=read('cslid_public_profiles',[]);
+    const startups=read('cslid_startups',[]);
+    const labelFor=(id)=>{
+      const profile=profiles.find(item=>item.user_id===id||item.id===id);
+      const startupRecord=startups.find(item=>item.user_id===id||item.id===id);
+      return profile?.name||startupRecord?.name||`User ${String(id||'').slice(0,8)}`;
+    };
+    const roleFor=(id)=>{
+      const profile=profiles.find(item=>item.user_id===id||item.id===id);
+      return profile?.role||'Member';
+    };
+    const otherId=item=>getOtherConnectionUser(item,current.id);
+    const incoming=rows.filter(item=>item.recipient_id===current.id&&item.status==='requested');
+    const outgoing=rows.filter(item=>item.requester_id===current.id&&item.status==='requested');
+    const accepted=rows.filter(item=>item.status==='accepted');
+    const section=(title,items,body,empty)=>`
+      <section class="glass p-5 rounded-3xl border border-gray-800 space-y-3">
+        <div class="flex items-center justify-between"><h2 class="text-sm font-bold">${title}</h2><span class="vl-pill">${items.length}</span></div>
+        ${items.length?items.map(body).join(''):`<p class="text-xs text-gray-500 py-3">${empty}</p>`}
+      </section>`;
+    const personRow=(item,actions)=>`
+      <div class="flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950/40 p-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center"><i class="fa-solid fa-user text-indigo-400"></i></div>
+        <div class="grow"><p class="text-sm font-bold">${escapeHtml(labelFor(otherId(item)))}</p><p class="text-[10px] text-gray-500">${escapeHtml(roleFor(otherId(item)))}</p></div>
+        <div class="flex gap-2">${actions(item)}</div>
+      </div>`;
+    container.innerHTML=
+      section('Incoming requests',incoming,item=>personRow(item,request=>`
+        <button onclick="respondToConnection('${request.id}','accept')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">Accept</button>
+        <button onclick="respondToConnection('${request.id}','reject')" class="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 text-[10px] font-bold">Reject</button>`),'No incoming requests right now.')+
+      section('Sent requests',outgoing,item=>personRow(item,()=>'<span class="px-3 py-2 rounded-lg bg-gray-800 text-gray-400 text-[10px] font-bold">Pending</span>'),'Requests you send will appear here.')+
+      section('Accepted connections',accepted,item=>personRow(item,connection=>`
+        <button onclick="openConnectionMessage('${otherId(connection)}')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-bold"><i class="fa-regular fa-message mr-1"></i>Message</button>`),'Accepted connections will appear here.');
+  };
 
   window.respondToConnection=async function(connectionId, action){
     const currentUser=user()||{};

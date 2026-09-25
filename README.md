@@ -40,9 +40,11 @@ The current MVP includes:
 
 - Supabase email/password authentication, session restoration, logout, and password reset
 - Founder and investor roles with role-aware navigation
+- Role-specific workspaces: founders manage Launch Center and requests; investors discover startups in Match Deck
 - UUID-based identities and ownership-based RLS policies
 - Persistent startup profiles, journey posts, connection requests, matches, and messages
 - Connection lifecycle: pending request, founder accept/reject, and shared match creation
+- Central Connections screen for incoming, sent, and accepted connections
 - Messaging restricted to accepted connections
 - Safer rendering of user-generated text and HTTPS validation for startup contact URLs
 
