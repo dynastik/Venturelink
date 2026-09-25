@@ -69,10 +69,10 @@
                 document.getElementById('card-stage').innerText = "LIVE";
                 document.getElementById('card-name').innerText = "No startup profiles yet";
                 document.getElementById('card-tagline').innerText = "Published startups will appear here automatically.";
-                document.getElementById('card-location').innerText = "â€”";
-                document.getElementById('card-seeking').innerText = "â€”";
-                document.getElementById('card-traction').innerText = "â€”";
-                document.getElementById('card-bio').innerText = "Open Launch Center â†’ My Startup and publish a startup profile. Investors can then swipe through registered startups.";
+                document.getElementById('card-location').innerText = "—";
+                document.getElementById('card-seeking').innerText = "—";
+                document.getElementById('card-traction').innerText = "—";
+                document.getElementById('card-bio').innerText = "Open Launch Center → My Startup and publish a startup profile. Investors can then swipe through registered startups.";
                 document.getElementById('card-tags').innerHTML = '';
                 return;
             }
@@ -93,6 +93,10 @@
         let matchedProfile = null;
 
         function handleSwipe(action) {
+            if (getStore('cslid_user', {}).role !== 'investor') {
+                showToast('The match deck is for investor accounts.');
+                return;
+            }
             if (!matchProfiles.length) {
                 showToast('No registered startups are available yet.');
                 return;
@@ -110,23 +114,14 @@
                 card.style.opacity = '1';
 
                 if (action === 'like' || action === 'super') {
-                    const matches = getStore('cslid_matches', []);
-                    if (!matches.some(m => m.id === profile.id)) {
-                        const match = {
-                            id: profile.id,
-                            name: profile.name,
-                            contactUrl: profile.contactUrl,
-                            matchedAt: Date.now()
-                        };
-                        matches.push(match);
-                        setStore('cslid_matches', matches);
-                        const currentUser = getStore('cslid_user', {});
-                        saveToSupabase('cslid_matches', {
-                            id: `${currentUser.id}_${profile.id}`,
-                            user_id: currentUser.id,
-                            name: match.name,
-                            contact_url: match.contactUrl || null,
-                            matched_at: new Date(match.matchedAt).toISOString()
+                    const currentUser = getStore('cslid_user', {});
+                    if (!currentUser.id) {
+                        showToast('Sign in before connecting.');
+                    } else if (profile.id && profile.id !== currentUser.id) {
+                        saveToSupabase('cslid_connections', {
+                            requester_id: currentUser.id,
+                            recipient_id: profile.id,
+                            status: 'requested'
                         });
                     }
 
@@ -154,16 +149,16 @@
                         <div class="flex items-center space-x-3">
                             <div class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-gray-400" aria-label="Author"><i class="fa-solid fa-user"></i></div>
                             <div>
-                                <h4 class="text-sm font-bold text-white">${post.author}</h4>
-                                <p class="text-[10px] text-indigo-400 font-semibold">${post.role} â€¢ ${post.time}</p>
+                                <h4 class="text-sm font-bold text-white">${escapeHtml(post.author)}</h4>
+                                <p class="text-[10px] text-indigo-400 font-semibold">${escapeHtml(post.role)} • ${escapeHtml(post.post_time || post.time || '')}</p>
                             </div>
                         </div>
                         <button class="text-gray-500 hover:text-white"><i class="fa-solid fa-ellipsis"></i></button>
                     </div>
-                    <p class="text-sm text-gray-300 leading-relaxed">${post.content}</p>
+                    <p class="text-sm text-gray-300 leading-relaxed">${escapeHtml(post.content)}</p>
                     ${post.image ? `<div class="rounded-2xl overflow-hidden border border-gray-800 max-h-72"><img src="${post.image}" class="w-full h-full object-cover"></div>` : ''}
                     <div class="flex flex-wrap gap-1.5">
-                        ${post.tags.map(t => `<span class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400">#${t}</span>`).join('')}
+                        ${(post.tags || []).map(t => `<span class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400">#${escapeHtml(t)}</span>`).join('')}
                     </div>
                     <div class="flex items-center justify-between pt-3 border-t border-gray-800/80 text-xs text-gray-400">
                         <button class="flex items-center space-x-1.5 hover:text-pink-400 transition"><i class="fa-regular fa-heart"></i><span>${post.likes}</span></button>
@@ -185,7 +180,7 @@
             const filtered = sector === 'all' ? directoryStartups : directoryStartups.filter(s => s.sector === sector);
             const grid = document.getElementById('directory-grid');
             grid.innerHTML = filtered.map(s => `
-                <div class="glass p-5 rounded-3xl border border-gray-800 space-y-4 hover:border-indigo-500/50 transition">
+                <div data-user-id="${s.userId || s.id}" class="glass p-5 rounded-3xl border border-gray-800 space-y-4 hover:border-indigo-500/50 transition">
                     <div class="h-36 rounded-2xl overflow-hidden bg-gray-800">
                         <img src="${s.image}" class="w-full h-full object-cover">
                     </div>
@@ -194,11 +189,11 @@
                             <h4 class="font-bold text-base text-white">${s.name}</h4>
                             <span class="text-[10px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400">${s.sector}</span>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${s.location} â€¢ Stage: ${s.stage}</p>
+                        <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${s.location} • Stage: ${s.stage}</p>
                     </div>
                     <div class="flex items-center justify-between pt-3 border-t border-gray-800 text-xs">
                         <span class="text-emerald-400 font-bold"><i class="fa-solid fa-sack-dollar mr-1"></i> Seeking ${s.raise}</span>
-                        <button onclick="connectPersistently('${s.name.replace("'", "\'")}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition">Connect</button>
+                        <button onclick="connectPersistently('${s.userId || s.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition">Connect</button>
                     </div>
                 </div>
             `).join('');
@@ -213,7 +208,7 @@
             resultContainer.innerHTML = `
                 <div class="p-4 rounded-2xl bg-gray-900/90 border border-indigo-500/30 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-indigo-400">ðŸ¦ˆ Shark Tank Elevator Pitch</span>
+                        <span class="text-xs font-bold text-indigo-400">Shark Tank Elevator Pitch</span>
                         <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">Ready</span>
                     </div>
                     <p class="text-xs text-gray-200 leading-relaxed italic">"Hi Sharks, I'm the founder of <b>${name}</b>. We live in a world where ${concept}. Existing solutions are slow and expensive. We solve this by automating the core bottleneck, delivering 10x faster results at a fraction of the cost. We are growing 30% month-over-month and looking for strategic partners today."</p>
@@ -263,22 +258,27 @@
             document.getElementById('post-modal').classList.add('hidden');
             document.getElementById('post-modal').classList.remove('flex');
         }
-        function submitNewPost() {
+        async function submitNewPost() {
             const content = document.getElementById('new-post-content').value;
             if(!content.trim()) return;
             const currentUser = getStore('cslid_user', {});
+            if (!currentUser.id) return showToast('Sign in before publishing an update.');
             const currentProfile = getStore('cslid_profile', {});
-            feedPosts.unshift({
+            const post = {
+                user_id: currentUser.id,
                 author: currentProfile.name || currentUser.name || "Founder",
-                role: currentProfile.startup || "Founder",
-                avatar: currentProfile.avatar || null,
-                time: "Just now",
+                role: currentUser.role || "Founder",
+                post_time: "Just now",
                 content: content,
                 image: null,
-                likes: 1,
+                likes: 0,
                 comments: 0,
                 tags: ["Update", "FounderJourney"]
-            });
+            };
+            const savedPost = await saveToSupabase('cslid_posts', post);
+            if (window.SUPABASE_CONFIGURED && !savedPost) return showToast('Could not publish the update. Please try again.');
+            feedPosts.unshift({...post, id: savedPost?.id || `local-${Date.now()}`});
+            setStore('cslid_posts', feedPosts);
             renderFeed();
             closePostModal();
             document.getElementById('new-post-content').value = '';
@@ -310,10 +310,12 @@
             saveToSupabase('cslid_profiles', {
                 id: ownerId,
                 user_id: ownerId,
+                role: currentUser.role || 'founder',
                 name: profile.name,
                 startup: profile.startup
             });
-            showToast('Profile saved on this device!');
+            updateUserUI();
+            showToast('Profile saved!');
         }
 
         // ------------------------------------------------------------
@@ -349,7 +351,11 @@
                     return showToast('Check your email to confirm your account, then sign in.');
                 }
                 const displayName = name || authUser.user_metadata?.name || email.split('@')[0];
-                const accountRole = role || authUser.user_metadata?.role;
+                let accountRole = mode === 'signup' ? role : authUser.user_metadata?.role;
+                if (!accountRole && mode === 'signin') {
+                    const accounts = await fetchFromSupabase('cslid_users');
+                    accountRole = accounts.find(account => account.id === authUser.id)?.role || '';
+                }
                 if (!accountRole) {
                     return showToast('Your account has no role yet. Sign out and create a new account with a role.');
                 }
@@ -389,6 +395,7 @@
         function updateUserUI() {
             const user = getStore('cslid_user', null);
             if(!user) return;
+            const isFounder = user.role === 'founder';
             const labels = document.querySelectorAll('#nav-btn-profile span');
             if(labels.length) labels[0].innerText = user.name;
             const profile = getStore('cslid_profile', {});
@@ -396,13 +403,22 @@
             const startup = document.getElementById('profile-startup');
             const nameInput = document.getElementById('profile-name-input');
             const startupInput = document.getElementById('profile-startup-input');
+            const bio = document.getElementById('profile-bio');
             if(name) name.innerText = profile.name || user.name || 'Your profile';
-            if(startup) startup.innerText = profile.startup || 'Add your founder profile';
+            if(startup) startup.innerText = profile.startup || (isFounder ? 'Add your startup profile' : 'Investor profile');
             if(nameInput) nameInput.value = profile.name || user.name || '';
             if(startupInput) startupInput.value = profile.startup || '';
+            if(bio) bio.innerText = profile.startup || (isFounder ? 'Add your startup focus and investment interests.' : 'Connect with founders and explore the startup directory.');
+            const matchNav = document.getElementById('nav-btn-match');
+            const launchButton = document.querySelector('header button[onclick="openLaunchCenter()"]');
+            if (matchNav) matchNav.hidden = !isFounder ? false : true;
+            if (launchButton) launchButton.hidden = !isFounder;
         }
 
         function openStartupModal() {
+            if (getStore('cslid_user', {}).role !== 'founder') {
+                return showToast('Startup profiles are available to founder accounts.');
+            }
             const startup = getStore('cslid_startup', null);
             if(startup) {
                 document.getElementById('startup-name').value = startup.name || '';
@@ -424,8 +440,9 @@
             document.getElementById('startup-modal').classList.remove('flex');
         }
 
-        function saveStartup() {
+        async function saveStartup() {
             const user = getStore('cslid_user', {});
+            if (user.role !== 'founder') return showToast('Only founder accounts can publish startup profiles.');
             const ownerId = user.id;
             if (!ownerId) return showToast('Sign in before creating a startup profile.');
             const startup = {
@@ -455,7 +472,7 @@
 
             saveRegisteredStartups(startups);
             setStore('cslid_startup', startup);
-            saveToSupabase('cslid_startups', {
+            const savedStartup = await saveToSupabase('cslid_startups', {
                 id: startup.id,
                 user_id: ownerId,
                 name: startup.name,
@@ -468,51 +485,30 @@
                 traction: startup.traction,
                 contact_url: startup.contactUrl
             });
+            if (window.SUPABASE_CONFIGURED && !savedStartup) {
+                return showToast('Could not save the startup profile. Please try again.');
+            }
             closeStartupModal();
             refreshMatchProfiles();
             showToast('Startup is now live in the investor swipe deck!');
         }
 
-        // Persist newly created posts.
-        const originalSubmitNewPost = submitNewPost;
-        submitNewPost = function() {
-            originalSubmitNewPost();
-            setStore('cslid_posts', feedPosts);
-            const post = feedPosts[0];
+        // Send a real participant-based connection request.
+        async function connectPersistently(recipientId) {
             const currentUser = getStore('cslid_user', {});
-            const ownerId = currentUser.id;
-            if (!ownerId) return showToast('Sign in before publishing an update.');
-            saveToSupabase('cslid_posts', {
-                id: post.id || `post_${Date.now()}`,
-                user_id: ownerId,
-                author: post.author,
-                role: post.role,
-                post_time: post.time,
-                content: post.content,
-                image: post.image,
-                likes: post.likes,
-                comments: post.comments,
-                tags: post.tags
+            if (!currentUser.id) return showToast('Sign in before sending a connection request.');
+            if (!recipientId || recipientId === currentUser.id) return showToast('You cannot connect with your own account.');
+            const existing = getStore('cslid_connections', []);
+            if (existing.includes(recipientId)) return showToast('You already sent a connection request.');
+            const saved = await saveToSupabase('cslid_connections', {
+                requester_id: currentUser.id,
+                recipient_id: recipientId,
+                status: 'requested'
             });
-        };
-
-        // Make directory connections persist locally.
-        function connectPersistently(name) {
-            const connections = getStore('cslid_connections', []);
-            if(!connections.includes(name)) {
-                connections.push(name);
-                setStore('cslid_connections', connections);
-                const currentUser = getStore('cslid_user', {});
-                if (!currentUser.id) return showToast('Sign in before sending a connection request.');
-                saveToSupabase('cslid_connections', {
-                    id: `${currentUser.id}_${name}`,
-                    user_id: currentUser.id,
-                    name
-                });
-                showToast(`Connection request sent to ${name}!`);
-            } else {
-                showToast(`You already connected with ${name}.`);
-            }
+            if (window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the connection request.');
+            existing.push(recipientId);
+            setStore('cslid_connections', existing);
+            showToast('Connection request sent!');
         }
 
         async function hydrateFromSupabase() {
@@ -551,6 +547,7 @@
 
             directoryStartups = startups.map(startup => ({
                 id: startup.id,
+                userId: startup.user_id,
                 name: startup.name,
                 sector: startup.sector || 'Startup',
                 stage: startup.stage || 'Early Stage',
@@ -580,12 +577,18 @@
                 };
                 setStore('cslid_startup', localStartup);
             }
-            setStore('cslid_connections', connections.filter(item => item.user_id === userId).map(item => item.name));
-            setStore('cslid_matches', matches.filter(item => item.user_id === userId).map(item => ({
-                id: item.id, name: item.name, contactUrl: item.contact_url, matchedAt: item.matched_at
+            setStore('cslid_connections', connections
+                .filter(item => item.requester_id === userId || item.recipient_id === userId)
+                .map(item => item.recipient_id === userId ? item.requester_id : item.recipient_id));
+            setStore('cslid_matches', matches.filter(item => item.user_id === userId || item.matched_user_id === userId).map(item => ({
+                id: item.id, userId: item.matched_user_id, matchedAt: item.matched_at
             })));
             const threads = {};
-            messages.filter(item => item.user_id === userId).forEach(item => { threads[item.thread_key] = item.messages || []; });
+            messages.forEach(item => {
+                const otherId = item.sender_id === userId ? item.recipient_id : item.sender_id;
+                threads[otherId] = threads[otherId] || [];
+                threads[otherId].push({text: item.content, me: item.sender_id === userId, time: item.created_at});
+            });
             setStore('cslid_messages', threads);
             const pitchTask = tasks.find(item => item.user_id === userId && item.task_key === 'pitch_ready');
             setStore('cslid_pitch_ready', Boolean(pitchTask && pitchTask.complete));
@@ -622,7 +625,12 @@
                 window.onSupabaseAuthStateChange((event, authUser) => {
                     if (authUser) {
                         const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
-                        setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email});
+                        setStore('cslid_user', {
+                            id: authUser.id,
+                            name: displayName,
+                            email: authUser.email,
+                            role: authUser.user_metadata?.role || getStore('cslid_user', {}).role || ''
+                        });
                         updateUserUI();
                     } else if (event === 'SIGNED_OUT') {
                         localStorage.removeItem('cslid_user');
@@ -666,6 +674,10 @@
   const user=()=>read(K.user,null), startup=()=>read(K.startup,null);
 
   window.openLaunchCenter=function(){
+    if (user()?.role !== 'founder') {
+      showToast('Launch Center is available to founder accounts.');
+      return;
+    }
     renderLaunchCenter();
     const el=document.getElementById('launch-center');el.classList.remove('hidden');el.classList.add('flex');
   };
@@ -685,7 +697,7 @@
     ];
     const done=checks.filter(x=>x[1]).length, pct=Math.round(done/checks.length*100);
     document.getElementById('launch-kpis').innerHTML=[
-      ['Progress',pct+'%'],['Posts',posts.length],['Connections',con.length],['Stage',s?.stage||'â€”']
+      ['Progress',pct+'%'],['Posts',posts.length],['Connections',con.length],['Stage',s?.stage||'—']
     ].map(x=>`<div class="vl-kpi"><strong>${x[1]}</strong><span>${x[0]}</span></div>`).join('');
 
     const actionMap={
@@ -741,9 +753,10 @@
 
   window.goToDirectory=function(){closeLaunchCenter();switchTab('directory');};
 
-  window.openMessageModal=function(name){
+  window.openMessageModal=function(name, recipientId){
     document.getElementById('message-title').innerHTML=`Message <span class="text-indigo-400">${name}</span>`;
     document.getElementById('message-modal').dataset.person=name;
+    document.getElementById('message-modal').dataset.recipientId=recipientId || '';
     renderMessages(name);
     const el=document.getElementById('message-modal');el.classList.remove('hidden');el.classList.add('flex');
   };
@@ -759,11 +772,13 @@
         const all=read(K.messages,{});all[name]=all[name]||[];all[name].push({text,me:true,time:Date.now()});write(K.messages,all);
         const currentUser = user() || {};
         if (!currentUser.id) return showToast('Sign in before sending messages.');
+        const recipientId = document.getElementById('message-modal').dataset.recipientId;
+        if (!recipientId || recipientId === currentUser.id) return showToast('This directory entry cannot receive messages yet.');
         saveToSupabase('cslid_messages', {
-        id: `${currentUser.id}_${name}`,
-        user_id: currentUser.id,
-            thread_key: name,
-            messages: all[name]
+            sender_id: currentUser.id,
+            recipient_id: recipientId,
+            thread_key: [currentUser.id, recipientId].sort().join(':'),
+            content: text
         });
         input.value='';renderMessages(name);showToast('Message saved');
   };
@@ -774,7 +789,7 @@
     else c.innerHTML=`
       <div class="text-center py-5">
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 via-pink-500 to-amber-400 mx-auto flex items-center justify-center"><i class="fa-solid fa-rocket text-white text-xl"></i></div>
-        <p class="text-[10px] uppercase tracking-widest text-gray-500 mt-4">${escapeHtml(s.stage)} Â· ${escapeHtml(s.sector||'Startup')}</p>
+        <p class="text-[10px] uppercase tracking-widest text-gray-500 mt-4">${escapeHtml(s.stage)} · ${escapeHtml(s.sector||'Startup')}</p>
         <h2 class="text-3xl font-extrabold mt-2">${escapeHtml(s.name)}</h2>
         <p class="text-gray-400 mt-2">${escapeHtml(s.tagline)}</p>
         <div class="mt-6 text-left p-4 rounded-2xl bg-gray-950 border border-gray-800"><p class="text-[10px] uppercase tracking-widest text-gray-500">Problem</p><p class="text-sm text-gray-300 mt-2">${escapeHtml(s.problem||'Not added yet.')}</p></div>
@@ -802,7 +817,7 @@
     out.innerHTML=`
       <div class="space-y-3">
         <div class="flex items-center justify-between"><span class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Investor pitch</span><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400">Ready</span></div>
-        <p class="text-sm leading-relaxed text-gray-200">â€œHi, Iâ€™m the founder of <strong class="text-white">${escapeHtml(name)}</strong>. We are building <strong class="text-white">${escapeHtml(concept)}</strong> to remove the biggest bottleneck in modern operations: speed, visibility, and manual execution. Our product delivers a clear ROI, reduces overhead, and helps teams scale faster without adding headcount. Weâ€™re raising to accelerate product, distribution, and customer traction.â€</p>
+        <p class="text-sm leading-relaxed text-gray-200">"Hi, I'm the founder of <strong class="text-white">${escapeHtml(name)}</strong>. We are building <strong class="text-white">${escapeHtml(concept)}</strong> to remove the biggest bottleneck in modern operations: speed, visibility, and manual execution. Our product delivers a clear ROI, reduces overhead, and helps teams scale faster without adding headcount. We're raising to accelerate product, distribution, and customer traction."</p>
         <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
           <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Problem</span> Manual workflows slow teams down.</div>
           <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Solution</span> AI-powered, low-friction workflow system.</div>
@@ -835,7 +850,7 @@
           btn.dataset.vlMessage='1';
           btn.className='px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-[10px] font-bold hover:border-indigo-500 transition';
           btn.innerHTML='<i class="fa-regular fa-message mr-1"></i> Message';
-          btn.onclick=()=>openMessageModal(name);
+          btn.onclick=()=>openMessageModal(name, card.dataset.userId);
           actions.appendChild(btn);
         }
       }
