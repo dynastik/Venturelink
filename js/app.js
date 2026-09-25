@@ -225,8 +225,6 @@
             document.getElementById('match-modal-text').innerText = profile
                 ? `Your connection request to ${profile.name} was sent. You can message them after they accept.`
                 : 'Connection request sent.';
-            const btn = document.getElementById('match-contact-btn');
-            if (btn) btn.innerText = 'Keep swiping';
             document.getElementById('match-modal').classList.remove('hidden');
             document.getElementById('match-modal').classList.add('flex');
         }

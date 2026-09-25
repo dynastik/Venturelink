@@ -246,22 +246,19 @@
 
     </main>
 
-    <!-- MATCH CELEBRATION MODAL -->
+    <!-- CONNECTION REQUEST MODAL -->
     <div id="match-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="glass p-8 rounded-3xl border border-indigo-500/40 text-center max-w-sm w-full space-y-5 glow-effect">
             <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 to-pink-600 mx-auto flex items-center justify-center shadow-2xl">
-                <i class="fa-solid fa-handshake text-3xl text-white"></i>
+                <i class="fa-solid fa-paper-plane text-3xl text-white"></i>
             </div>
             <div>
-                <h2 class="text-2xl font-extrabold gradient-text">It's a Venture Match!</h2>
-                <p id="match-modal-text" class="text-xs text-gray-300 mt-2">You and Apex Capital are now connected. Time to pitch your deck.</p>
+                <h2 class="text-2xl font-extrabold gradient-text">Connection request sent</h2>
+                <p id="match-modal-text" class="text-xs text-gray-300 mt-2">The founder will review your request. Messaging becomes available if they accept.</p>
             </div>
             <div class="space-y-2">
                 <button onclick="closeMatchModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold text-sm shadow-lg">
-                    Send Pitch Deck / Message
-                </button>
-                <button onclick="closeMatchModal()" class="w-full py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white text-xs font-semibold">
-                    Keep Swiping
+                    Continue swiping
                 </button>
             </div>
         </div>
