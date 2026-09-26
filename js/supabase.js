@@ -39,6 +39,19 @@
             }
             return data;
         }
+        async function insertMessageToSupabase(row) {
+            if (!SUPABASE_CONFIGURED) return null;
+            const { data, error } = await supabaseClient
+                .from('cslid_messages')
+                .insert(row)
+                .select()
+                .single();
+            if (error) {
+                console.error('Supabase message send failed:', error.message);
+                throw error;
+            }
+            return data;
+        }
         async function fetchFromSupabase(table) {
             if (!SUPABASE_CONFIGURED) return [];
             const { data, error } = await supabaseClient.from(table).select('*');
@@ -144,6 +157,7 @@
             if (error) throw error;
         }
         window.saveToSupabase = saveToSupabase;
+        window.insertMessageToSupabase = insertMessageToSupabase;
         window.fetchFromSupabase = fetchFromSupabase;
         window.updateSupabase = updateSupabase;
         window.callSupabaseFunction = callSupabaseFunction;

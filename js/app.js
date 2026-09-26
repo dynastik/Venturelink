@@ -1171,12 +1171,17 @@ function escapeHtml(value) {
         if (!allowLocalAction('cslid_message_attempts', 100, 60 * 60 * 1000)) {
           return showToast('Hourly message limit reached. Please try again later.');
         }
-        const saved=await saveToSupabase('cslid_messages', {
-            sender_id: currentUser.id,
-            recipient_id: recipientId,
-            thread_key: [currentUser.id, recipientId].sort().join(':'),
-            content: text
-        });
+        let saved;
+        try {
+          saved=await window.insertMessageToSupabase({
+              sender_id: currentUser.id,
+              recipient_id: recipientId,
+              thread_key: [currentUser.id, recipientId].sort().join(':'),
+              content: text
+          });
+        } catch(error) {
+          return showToast(`Could not send message: ${error.message || 'Please try again.'}`);
+        }
         if(window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the message. Please try again.');
         const threadKey=modal.dataset.threadKey||recipientId;
         const all=read(K.messages,{});all[threadKey]=all[threadKey]||[];all[threadKey].push({text,me:true,time:saved?.created_at||Date.now()});write(K.messages,all);

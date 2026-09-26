@@ -60,6 +60,8 @@ Run the current `supabase-schema.sql` in the Supabase SQL Editor before using th
 
 From **Profile**, a signed-in user can download a JSON export of their account data or permanently delete the account and associated application data. Account deletion is irreversible. Keep a backup of important data before testing it.
 
+If message sends fail after deploying the safety controls, run `supabase-messaging-fix.sql` in the Supabase SQL Editor. This is a non-destructive migration that replaces the action-limit triggers without dropping application tables or data. Deploy the updated `js/app.js` and `js/supabase.js` as well.
+
 
 ## License
 
