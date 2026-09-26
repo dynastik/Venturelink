@@ -1,20 +1,23 @@
--- cslid database schema
--- Run this in Supabase Dashboard -> SQL Editor after reviewing it.
--- This schema expects Supabase Auth users. Never use a service-role key in the website.
+-- DESTRUCTIVE FULL RESET:
+-- Running this script deletes every Supabase Auth user and all cslid app data,
+-- then recreates the app tables, policies, triggers, and RPC functions below.
+-- Export anything you need before running. Never use a service-role key in the website.
 
 create extension if not exists pgcrypto;
 
--- Safe reset for the app data while keeping Auth users intact.
+-- Remove cslid data first, then clear Auth users so no stale test accounts remain.
 drop table if exists public.cslid_messages cascade;
 drop table if exists public.cslid_tasks cascade;
 drop table if exists public.cslid_matches cascade;
 drop table if exists public.cslid_connections cascade;
+drop table if exists public.cslid_connection_request_attempts cascade;
 drop table if exists public.cslid_posts cascade;
 drop table if exists public.cslid_startups cascade;
 drop table if exists public.cslid_profiles cascade;
 drop table if exists public.cslid_users cascade;
 drop table if exists public.cslid_reports cascade;
 drop table if exists public.cslid_blocks cascade;
+delete from auth.users;
 
 create table if not exists public.cslid_users (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -80,6 +83,13 @@ create table if not exists public.cslid_connections (
   unique (requester_id, recipient_id)
 );
 
+create table if not exists public.cslid_connection_request_attempts (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references auth.users(id) on delete cascade,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.cslid_matches (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -128,6 +138,10 @@ create table if not exists public.cslid_reports (
 create index if not exists cslid_users_email_idx on public.cslid_users (email);
 create index if not exists cslid_connections_status_idx on public.cslid_connections (status);
 create index if not exists cslid_connections_users_idx on public.cslid_connections (requester_id, recipient_id);
+create index if not exists cslid_connection_attempts_user_time_idx
+  on public.cslid_connection_request_attempts (requester_id, created_at desc);
+create unique index if not exists cslid_connections_pair_idx
+  on public.cslid_connections (least(requester_id, recipient_id), greatest(requester_id, recipient_id));
 create index if not exists cslid_messages_thread_idx on public.cslid_messages (thread_key, created_at desc);
 create index if not exists cslid_startups_public_idx on public.cslid_startups (is_public, user_id);
 create index if not exists cslid_blocks_blocked_idx on public.cslid_blocks (blocked_id);
@@ -190,6 +204,7 @@ alter table public.cslid_profiles enable row level security;
 alter table public.cslid_startups enable row level security;
 alter table public.cslid_posts enable row level security;
 alter table public.cslid_connections enable row level security;
+alter table public.cslid_connection_request_attempts enable row level security;
 alter table public.cslid_matches enable row level security;
 alter table public.cslid_messages enable row level security;
 alter table public.cslid_tasks enable row level security;
@@ -229,20 +244,16 @@ create policy "Users delete own posts" on public.cslid_posts
 create policy "Users can view their own connection rows" on public.cslid_connections
   for select to authenticated using (requester_id = auth.uid() or recipient_id = auth.uid());
 create policy "Users can create connection requests" on public.cslid_connections
-  for insert to authenticated with check (requester_id = auth.uid() and recipient_id <> auth.uid());
-create policy "Users can update connection rows" on public.cslid_connections
-  for update to authenticated using (requester_id = auth.uid() or recipient_id = auth.uid())
-  with check ((requester_id = auth.uid() or recipient_id = auth.uid()) and requester_id <> recipient_id);
+  for insert to authenticated with check (
+    requester_id = auth.uid()
+    and recipient_id <> auth.uid()
+    and status = 'requested'
+  );
 create policy "Users can delete own connection rows" on public.cslid_connections
   for delete to authenticated using (requester_id = auth.uid() or recipient_id = auth.uid());
 
 create policy "Users can view their match rows" on public.cslid_matches
   for select to authenticated using (user_id = auth.uid() or matched_user_id = auth.uid());
-create policy "Users can create own match rows" on public.cslid_matches
-  for insert to authenticated with check (user_id = auth.uid() and matched_user_id <> auth.uid());
-create policy "Users can update own match rows" on public.cslid_matches
-  for update to authenticated using (user_id = auth.uid() or matched_user_id = auth.uid())
-  with check ((user_id = auth.uid() or matched_user_id = auth.uid()) and user_id <> matched_user_id);
 
 -- Accepting a request must update the connection and create the match together.
 -- The function inserts one match row visible to both participants through RLS.
@@ -302,17 +313,40 @@ begin
 end;
 $$;
 
+create or replace function public.retry_connection_request(p_connection_id uuid)
+returns public.cslid_connections
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  connection_row public.cslid_connections;
+begin
+  update public.cslid_connections
+  set status = 'requested'
+  where id = p_connection_id
+    and requester_id = auth.uid()
+    and status = 'rejected'
+  returning * into connection_row;
+
+  if connection_row.id is null then
+    raise exception 'Rejected connection request not found or not retryable';
+  end if;
+  return connection_row;
+end;
+$$;
+
 revoke all on function public.accept_connection(uuid) from public;
 grant execute on function public.accept_connection(uuid) to authenticated;
 revoke all on function public.reject_connection(uuid) from public;
 grant execute on function public.reject_connection(uuid) to authenticated;
+revoke all on function public.retry_connection_request(uuid) from public;
+grant execute on function public.retry_connection_request(uuid) to authenticated;
 
 create policy "Users can view their message threads" on public.cslid_messages
   for select to authenticated using (sender_id = auth.uid() or recipient_id = auth.uid());
 create policy "Users can send messages" on public.cslid_messages
   for insert to authenticated with check (sender_id = auth.uid() and recipient_id <> auth.uid());
-create policy "Users can update own sent messages" on public.cslid_messages
-  for update to authenticated using (sender_id = auth.uid()) with check (sender_id = auth.uid() and recipient_id <> auth.uid());
 create policy "Users can delete own sent messages" on public.cslid_messages
   for delete to authenticated using (sender_id = auth.uid());
 
@@ -321,10 +355,6 @@ create policy "Users manage own tasks" on public.cslid_tasks
 
 create policy "Users can view their own blocks" on public.cslid_blocks
   for select to authenticated using (blocker_id = auth.uid());
-create policy "Users can create their own blocks" on public.cslid_blocks
-  for insert to authenticated with check (blocker_id = auth.uid() and blocked_id <> auth.uid());
-create policy "Users can delete their own blocks" on public.cslid_blocks
-  for delete to authenticated using (blocker_id = auth.uid());
 
 create policy "Users can create reports" on public.cslid_reports
   for insert to authenticated with check (reporter_id = auth.uid() and reported_id <> auth.uid());
@@ -333,16 +363,24 @@ create policy "Users can view their own reports" on public.cslid_reports
 
 create or replace function public.is_blocked_between(first_user uuid, second_user uuid)
 returns boolean
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select exists (
+declare
+  caller uuid := auth.uid();
+begin
+  if caller is null or (caller <> first_user and caller <> second_user) then
+    return false;
+  end if;
+
+  return exists (
     select 1 from public.cslid_blocks
     where (blocker_id = first_user and blocked_id = second_user)
        or (blocker_id = second_user and blocked_id = first_user)
   );
+end;
 $$;
 
 create or replace function public.enforce_connection_request_limit()
@@ -362,17 +400,19 @@ begin
     return new;
   end if;
 
+  perform pg_advisory_xact_lock(hashtextextended('connection:' || new.requester_id::text, 0));
   if public.is_blocked_between(new.requester_id, new.recipient_id) then
     raise exception 'This user is blocked';
   end if;
   select count(*) into recent_count
-  from public.cslid_connections
+  from public.cslid_connection_request_attempts
   where requester_id = new.requester_id
-    and status = 'requested'
     and created_at > now() - interval '24 hours';
   if recent_count >= 20 then
     raise exception 'Daily connection request limit reached';
   end if;
+  insert into public.cslid_connection_request_attempts (requester_id, recipient_id)
+  values (new.requester_id, new.recipient_id);
   return new;
 end;
 $$;
@@ -386,6 +426,7 @@ as $$
 declare
   recent_count integer;
 begin
+  perform pg_advisory_xact_lock(hashtextextended('message:' || new.sender_id::text, 0));
   if public.is_blocked_between(new.sender_id, new.recipient_id) then
     raise exception 'This user is blocked';
   end if;
@@ -505,6 +546,7 @@ create policy "Users can create connection requests" on public.cslid_connections
   with check (
     requester_id = auth.uid()
     and recipient_id <> auth.uid()
+    and status = 'requested'
     and not public.is_blocked_between(requester_id, recipient_id)
   );
 
@@ -563,3 +605,5 @@ $$;
 
 revoke all on function public.send_connection_message(uuid, text) from public;
 grant execute on function public.send_connection_message(uuid, text) to authenticated;
+
+notify pgrst, 'reload schema';

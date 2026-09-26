@@ -15,7 +15,7 @@ This project is currently in testing. It is not yet ready for real users or prod
 - Journey/feed posts
 - Basic messaging interface
 - Launch Center with startup preparation tools
-- Investor pitch-generation prototype
+- Template-based pitch text generator (not connected to an AI service)
 - Light and dark themes
 - Supabase client integration scaffold
 
@@ -56,14 +56,19 @@ The current MVP includes:
 
 ## Safety and account controls
 
-Run the current `supabase-schema.sql` in the Supabase SQL Editor before using these controls. The schema enforces a maximum of 20 new connection requests per account per 24 hours and 100 messages per account per hour, in addition to the browser’s immediate feedback limits. Users can report or block a person from an open message thread. Blocking removes the connection and conversation and prevents new requests or messages in either direction.
+The `supabase-schema.sql` file is a **destructive full reset**: it deletes every Supabase Auth user and all cslid app data, then recreates the tables, policies, triggers, and RPC functions. Export anything you need first. After running it, create fresh test accounts. It enforces a maximum of 20 new connection requests per account per 24 hours and 100 messages per account per hour, in addition to browser-side feedback limits. Users can report or block a person from an open message thread. Blocking removes the connection and conversation and prevents new requests or messages in either direction.
 
 From **Profile**, a signed-in user can download a JSON export of their account data or permanently delete the account and associated application data. Account deletion is irreversible. Keep a backup of important data before testing it.
 
-If message sends fail after deploying the safety controls, run `supabase-messaging-fix.sql` in the Supabase SQL Editor. This is a non-destructive migration that replaces the action-limit triggers without dropping application tables or data. Deploy the updated `js/app.js` and `js/supabase.js` as well.
+Message delivery uses the authenticated `send_connection_message` RPC. The full-reset schema installs the correct message-only rate-limit trigger and RPC. After running it, deploy the updated `js/app.js` and `js/supabase.js`, then create fresh test accounts. The RPC derives the sender from `auth.uid()` and verifies the accepted connection and block state before inserting.
 
-Message delivery uses the authenticated `send_connection_message` RPC. If an existing Supabase project rejects message inserts under RLS, run `supabase-message-rpc-migration.sql` in the SQL Editor, then deploy the updated `js/app.js` and `js/supabase.js`. The function derives the sender from `auth.uid()` and verifies the accepted connection and block state before inserting.
+## Remaining beta limitations
 
+- Feed like, comment, and share controls are visual placeholders and do not persist actions.
+- Reports are stored for manual review in Supabase; there is no in-app moderator queue or notification.
+- The pitch builder uses a fixed text template, not an AI service.
+- Tailwind is loaded from its CDN, which is suitable for prototyping but not recommended for a production build.
+- No automated test or build scripts are configured yet.
 
 ## License
 

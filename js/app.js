@@ -141,13 +141,11 @@ function escapeHtml(value) {
                 card.style.opacity = '1';
 
                 if (action === 'like' || action === 'super') {
-                    const currentUser = getStore('cslid_user', {});
-                    if (!currentUser.id) {
-                        showToast('Sign in before connecting.');
-                    } else if (profile.id && profile.id !== currentUser.id) {
-                        await connectPersistently(profile.id);
+                    if (!profile.id) {
+                        showToast('This startup cannot receive a connection request yet.');
+                    } else if (await connectPersistently(profile.id)) {
+                        openMatchModal(profile);
                     }
-                    openMatchModal(profile);
                 }
 
                 currentProfileIndex = (currentProfileIndex + 1) % matchProfiles.length;
@@ -218,32 +216,6 @@ function escapeHtml(value) {
                     </div>
                 </div>
             `).join('');
-        }
-
-        // AI Pitch Generator Logic
-        function generateAIPitch() {
-            const name = document.getElementById('ai-startup-name').value || "VentureAI";
-            const concept = document.getElementById('ai-startup-concept').value || "Autonomous workflows";
-
-            const resultContainer = document.getElementById('ai-output-result');
-            resultContainer.innerHTML = `
-                <div class="p-4 rounded-2xl bg-gray-900/90 border border-indigo-500/30 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-indigo-400">Shark Tank Elevator Pitch</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">Ready</span>
-                    </div>
-                    <p class="text-xs text-gray-200 leading-relaxed italic">"Hi Sharks, I'm the founder of <b>${name}</b>. We live in a world where ${concept}. Existing solutions are slow and expensive. We solve this by automating the core bottleneck, delivering 10x faster results at a fraction of the cost. We are growing 30% month-over-month and looking for strategic partners today."</p>
-                    <div class="pt-2 border-t border-gray-800 text-[11px] text-gray-400 space-y-1">
-                        <div><b>Value Prop:</b> 10x speed improvement on core legacy workflows.</div>
-                        <div><b>Target Market:</b> B2B enterprises & high-growth SMBs.</div>
-                    </div>
-                </div>
-            `;
-            showToast('AI Pitch generated successfully!');
-        }
-
-        function copyAIPitch() {
-            showToast('Pitch copied to clipboard!');
         }
 
         // Modals & Toasts
@@ -689,20 +661,27 @@ function escapeHtml(value) {
             }
             const existing = getConnectionRows();
             const relationship = getConnectionBetween(requesterId, recipientId);
-            if (relationship?.status === 'accepted') return showToast('You are already connected.');
+            if (relationship?.status === 'accepted') {
+                showToast('You are already connected.');
+                return false;
+            }
             if (relationship?.status === 'requested') {
-                return showToast(relationship.requester_id === requesterId
+                showToast(relationship.requester_id === requesterId
                     ? 'Your connection request is pending.'
                     : 'This person has already requested to connect.');
+                return false;
             }
             const saved = relationship?.status === 'rejected' && relationship.requester_id === requesterId
-                ? await window.updateSupabase('cslid_connections', {id: relationship.id}, {status: 'requested'})
+                ? await window.callSupabaseFunction('retry_connection_request', {p_connection_id: relationship.id})
                 : await saveToSupabase('cslid_connections', {
                     requester_id: requesterId,
                     recipient_id: recipientId,
                     status: 'requested'
                 });
-            if (window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the connection request.');
+            if (window.SUPABASE_CONFIGURED && !saved) {
+                showToast('Could not send the connection request.');
+                return false;
+            }
             existing.push(saved || {
                 requester_id: requesterId,
                 recipient_id: recipientId,
@@ -711,6 +690,7 @@ function escapeHtml(value) {
             setStore('cslid_connections', existing);
             filterDirectory('all');
             showToast('Connection request sent!');
+            return true;
         }
 
         async function hydrateFromSupabase() {
@@ -971,7 +951,7 @@ function escapeHtml(value) {
     const done=checks.filter(x=>x[1]).length, pct=Math.round(done/checks.length*100);
     document.getElementById('launch-kpis').innerHTML=[
       ['Progress',pct+'%'],['Posts',posts.length],['Connections',matches.length],['Stage',s?.stage||'—']
-    ].map(x=>`<div class="vl-kpi"><strong>${x[1]}</strong><span>${x[0]}</span></div>`).join('');
+    ].map(x=>`<div class="vl-kpi"><strong>${escapeHtml(x[1])}</strong><span>${escapeHtml(x[0])}</span></div>`).join('');
 
     const actionMap={
       'Account created':'account',
@@ -1241,7 +1221,7 @@ function escapeHtml(value) {
     out.innerHTML=`
       <div class="space-y-3">
         <div class="flex items-center justify-between"><span class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Investor pitch</span><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400">Ready</span></div>
-        <p class="text-sm leading-relaxed text-gray-200">"Hi, I'm the founder of <strong class="text-white">${escapeHtml(name)}</strong>. We are building <strong class="text-white">${escapeHtml(concept)}</strong> to remove the biggest bottleneck in modern operations: speed, visibility, and manual execution. Our product delivers a clear ROI, reduces overhead, and helps teams scale faster without adding headcount. We're raising to accelerate product, distribution, and customer traction."</p>
+        <p class="text-sm leading-relaxed text-gray-200">"Hi, I'm the founder of <strong class="text-white">${escapeHtml(name)}</strong>. We are building <strong class="text-white">${escapeHtml(concept)}</strong>. We are looking to speak with investors and partners who are interested in this problem space and can help us validate the opportunity."</p>
         <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
           <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Problem</span> Manual workflows slow teams down.</div>
           <div class="rounded-lg bg-gray-900 p-2"><span class="block text-gray-500">Solution</span> AI-powered, low-friction workflow system.</div>
