@@ -1197,12 +1197,7 @@ function escapeHtml(value) {
         }
         let saved;
         try {
-          saved=await window.insertMessageToSupabase({
-              sender_id: senderId,
-              recipient_id: recipientId,
-              thread_key: [senderId, recipientId].sort().join(':'),
-              content: text
-          });
+          saved=await window.sendMessageToSupabase(recipientId, text);
         } catch(error) {
           return showToast(`Could not send message: ${error.message || 'Please try again.'}`);
         }

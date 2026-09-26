@@ -39,13 +39,12 @@
             }
             return data;
         }
-        async function insertMessageToSupabase(row) {
+        async function sendMessageToSupabase(recipientId, content) {
             if (!SUPABASE_CONFIGURED) return null;
-            const { data, error } = await supabaseClient
-                .from('cslid_messages')
-                .insert(row)
-                .select()
-                .single();
+            const { data, error } = await supabaseClient.rpc('send_connection_message', {
+                p_recipient_id: recipientId,
+                p_content: content
+            });
             if (error) {
                 console.error('Supabase message send failed:', error.message);
                 throw error;
@@ -157,7 +156,7 @@
             if (error) throw error;
         }
         window.saveToSupabase = saveToSupabase;
-        window.insertMessageToSupabase = insertMessageToSupabase;
+        window.sendMessageToSupabase = sendMessageToSupabase;
         window.fetchFromSupabase = fetchFromSupabase;
         window.updateSupabase = updateSupabase;
         window.callSupabaseFunction = callSupabaseFunction;

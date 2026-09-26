@@ -62,6 +62,8 @@ From **Profile**, a signed-in user can download a JSON export of their account d
 
 If message sends fail after deploying the safety controls, run `supabase-messaging-fix.sql` in the Supabase SQL Editor. This is a non-destructive migration that replaces the action-limit triggers without dropping application tables or data. Deploy the updated `js/app.js` and `js/supabase.js` as well.
 
+Message delivery uses the authenticated `send_connection_message` RPC. If an existing Supabase project rejects message inserts under RLS, run `supabase-message-rpc-migration.sql` in the SQL Editor, then deploy the updated `js/app.js` and `js/supabase.js`. The function derives the sender from `auth.uid()` and verifies the accepted connection and block state before inserting.
+
 
 ## License
 
