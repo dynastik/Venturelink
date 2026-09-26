@@ -279,10 +279,11 @@ function escapeHtml(value) {
             const content = document.getElementById('new-post-content').value;
             if(!content.trim()) return;
             const currentUser = getStore('cslid_user', {});
-            if (!currentUser.id) return showToast('Sign in before publishing an update.');
+            const authUser = await getLiveUserForWrite();
+            if (!authUser) return;
             const currentProfile = getStore('cslid_profile', {});
             const post = {
-                user_id: currentUser.id,
+                user_id: authUser.id,
                 author: currentProfile.name || currentUser.name || "Founder",
                 role: currentUser.role || "Founder",
                 post_time: "Just now",
@@ -314,25 +315,41 @@ function escapeHtml(value) {
             }, 3500);
         }
 
-        function saveProfile() {
+        async function saveProfile() {
             const inputs = document.querySelectorAll('#tab-profile input');
             const profile = {
                 name: inputs[0]?.value || '',
                 startup: inputs[1]?.value || ''
             };
-            setStore('cslid_profile', profile);
             const currentUser = getStore('cslid_user', {});
-            const ownerId = currentUser.id;
-            if (!ownerId) return showToast('Sign in before saving your profile.');
-            saveToSupabase('cslid_profiles', {
-                id: ownerId,
-                user_id: ownerId,
-                role: currentUser.role || 'founder',
+            const authUser = await getLiveUserForWrite();
+            if (!authUser) return;
+            const accountRole = await resolveAccountRole(authUser, currentUser);
+            if (!accountRole) return showToast('Could not verify your account role. Please sign in again.');
+            const savedProfile = await saveToSupabase('cslid_profiles', {
+                id: authUser.id,
+                user_id: authUser.id,
+                role: accountRole,
                 name: profile.name,
                 startup: profile.startup
             });
+            if (window.SUPABASE_CONFIGURED && !savedProfile) return showToast('Could not save your profile. Please try again.');
+            setStore('cslid_profile', profile);
             updateUserUI();
             showToast('Profile saved!');
+        }
+
+        async function getLiveUserForWrite() {
+            if (!window.SUPABASE_CONFIGURED || !window.getSupabaseUser) {
+                showToast('Supabase is not configured.');
+                return null;
+            }
+            const authUser = await window.getSupabaseUser();
+            if (!authUser) {
+                showToast('Your session has expired. Sign in again before saving.');
+                return null;
+            }
+            return authUser;
         }
 
         function allowLocalAction(key, limit, windowMs) {
@@ -465,18 +482,22 @@ function escapeHtml(value) {
                 if(!authUser || !result.session) {
                     return showToast('Check your email to confirm your account, then sign in.');
                 }
+                const liveUser = await getLiveUserForWrite();
+                if (!liveUser || liveUser.id !== authUser.id) {
+                    return showToast('Your sign-in session changed. Please sign in again.');
+                }
                 const displayName = name || authUser.user_metadata?.name || email.split('@')[0];
                 const accountRole = mode === 'signup'
                     ? role
-                    : await resolveAccountRole(authUser, getStore('cslid_user', {}));
+                    : await resolveAccountRole(liveUser, getStore('cslid_user', {}));
                 if (!accountRole) {
                     return showToast('Your account has no role yet. Sign out and create a new account with a role.');
                 }
-                setStore('cslid_user', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
-                await saveToSupabase('cslid_users', {id: authUser.id, name: displayName, email: authUser.email, role: accountRole});
+                setStore('cslid_user', {id: liveUser.id, name: displayName, email: liveUser.email, role: accountRole});
+                await saveToSupabase('cslid_users', {id: liveUser.id, name: displayName, email: liveUser.email, role: accountRole});
                 await saveToSupabase('cslid_profiles', {
-                    id: authUser.id,
-                    user_id: authUser.id,
+                    id: liveUser.id,
+                    user_id: liveUser.id,
                     role: accountRole,
                     name: displayName,
                     is_public: true
@@ -582,8 +603,9 @@ function escapeHtml(value) {
         async function saveStartup() {
             const user = getStore('cslid_user', {});
             if (user.role !== 'founder') return showToast('Only founder accounts can publish startup profiles.');
-            const ownerId = user.id;
-            if (!ownerId) return showToast('Sign in before creating a startup profile.');
+            const authUser = await getLiveUserForWrite();
+            if (!authUser) return;
+            const ownerId = authUser.id;
             const startup = {
                 id: ownerId,
                 name: document.getElementById('startup-name').value.trim(),
@@ -658,30 +680,31 @@ function escapeHtml(value) {
 
         // Send a real participant-based connection request.
         async function connectPersistently(recipientId) {
-            const currentUser = getStore('cslid_user', {});
-            if (!currentUser.id) return showToast('Sign in before sending a connection request.');
-            if (!recipientId || recipientId === currentUser.id) return showToast('You cannot connect with your own account.');
+            const authUser = await getLiveUserForWrite();
+            if (!authUser) return;
+            const requesterId = authUser.id;
+            if (!recipientId || recipientId === requesterId) return showToast('You cannot connect with your own account.');
             if (!allowLocalAction('cslid_connection_attempts', 20, 24 * 60 * 60 * 1000)) {
                 return showToast('Daily connection request limit reached. Try again tomorrow.');
             }
             const existing = getConnectionRows();
-            const relationship = getConnectionBetween(currentUser.id, recipientId);
+            const relationship = getConnectionBetween(requesterId, recipientId);
             if (relationship?.status === 'accepted') return showToast('You are already connected.');
             if (relationship?.status === 'requested') {
-                return showToast(relationship.requester_id === currentUser.id
+                return showToast(relationship.requester_id === requesterId
                     ? 'Your connection request is pending.'
                     : 'This person has already requested to connect.');
             }
-            const saved = relationship?.status === 'rejected' && relationship.requester_id === currentUser.id
+            const saved = relationship?.status === 'rejected' && relationship.requester_id === requesterId
                 ? await window.updateSupabase('cslid_connections', {id: relationship.id}, {status: 'requested'})
                 : await saveToSupabase('cslid_connections', {
-                    requester_id: currentUser.id,
+                    requester_id: requesterId,
                     recipient_id: recipientId,
                     status: 'requested'
                 });
             if (window.SUPABASE_CONFIGURED && !saved) return showToast('Could not send the connection request.');
             existing.push(saved || {
-                requester_id: currentUser.id,
+                requester_id: requesterId,
                 recipient_id: recipientId,
                 status: 'requested'
             });
@@ -1162,11 +1185,12 @@ function escapeHtml(value) {
     const modal=document.getElementById('message-modal');
     const input=document.getElementById('message-input'), text=input.value.trim(), name=modal.dataset.person;
     if(!text)return;
-        const currentUser = user() || {};
-        if (!currentUser.id) return showToast('Sign in before sending messages.');
+        const authUser = await getLiveUserForWrite();
+        if (!authUser) return;
+        const senderId = authUser.id;
         const recipientId = document.getElementById('message-modal').dataset.recipientId;
-        if (!recipientId || recipientId === currentUser.id) return showToast('This directory entry cannot receive messages yet.');
-        const relationship=getConnectionBetween(currentUser.id,recipientId);
+        if (!recipientId || recipientId === senderId) return showToast('This directory entry cannot receive messages yet.');
+        const relationship=getConnectionBetween(senderId,recipientId);
         if(!relationship || relationship.status!=='accepted') return showToast('Messaging is available after the connection is accepted.');
         if (!allowLocalAction('cslid_message_attempts', 100, 60 * 60 * 1000)) {
           return showToast('Hourly message limit reached. Please try again later.');
@@ -1174,9 +1198,9 @@ function escapeHtml(value) {
         let saved;
         try {
           saved=await window.insertMessageToSupabase({
-              sender_id: currentUser.id,
+              sender_id: senderId,
               recipient_id: recipientId,
-              thread_key: [currentUser.id, recipientId].sort().join(':'),
+              thread_key: [senderId, recipientId].sort().join(':'),
               content: text
           });
         } catch(error) {
@@ -1262,12 +1286,12 @@ function escapeHtml(value) {
   }
 
   // Small persistence hook for pitch/tool completion.
-    window.markPitchReady=function(){
+    window.markPitchReady=async function(){
+        const authUser = await getLiveUserForWrite();
+        if (!authUser) return;
         write('cslid_pitch_ready',true);
-        const currentUser = user() || {};
         saveToSupabase('cslid_tasks', {
-            id: `${currentUser.id}_pitch_ready`,
-            user_id: currentUser.id,
+            user_id: authUser.id,
             task_key: 'pitch_ready',
             complete: true
         });
