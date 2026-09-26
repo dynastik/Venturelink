@@ -1,4 +1,15 @@
-﻿// LIVE STARTUP MATCH DECK
+﻿// Shared by the main app and the rollout UI layer below.
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[character]));
+}
+
+// LIVE STARTUP MATCH DECK
         // Startups publish their profile through "My Startup".
         // Investors then see those published profiles in the swipe deck.
         let currentProfileIndex = 0;
@@ -379,6 +390,17 @@
         function setStore(key, value) {
             localStorage.setItem(key, JSON.stringify(value));
         }
+        async function resolveAccountRole(authUser, previousUser) {
+            const metadataRole = authUser.user_metadata?.role;
+            if (metadataRole === 'founder' || metadataRole === 'investor') return metadataRole;
+            if (previousUser?.id === authUser.id &&
+                (previousUser.role === 'founder' || previousUser.role === 'investor')) {
+                return previousUser.role;
+            }
+            const accounts = await fetchFromSupabase('cslid_users');
+            const accountRole = accounts.find(account => account.id === authUser.id)?.role;
+            return accountRole === 'founder' || accountRole === 'investor' ? accountRole : '';
+        }
 
         window.setAuthMode = function(mode) {
             const isSignIn = mode === 'signin';
@@ -444,11 +466,9 @@
                     return showToast('Check your email to confirm your account, then sign in.');
                 }
                 const displayName = name || authUser.user_metadata?.name || email.split('@')[0];
-                let accountRole = mode === 'signup' ? role : authUser.user_metadata?.role;
-                if (!accountRole && mode === 'signin') {
-                    const accounts = await fetchFromSupabase('cslid_users');
-                    accountRole = accounts.find(account => account.id === authUser.id)?.role || '';
-                }
+                const accountRole = mode === 'signup'
+                    ? role
+                    : await resolveAccountRole(authUser, getStore('cslid_user', {}));
                 if (!accountRole) {
                     return showToast('Your account has no role yet. Sign out and create a new account with a role.');
                 }
@@ -804,11 +824,12 @@
                 if (authUser) {
                     const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
                     const previousUser = getStore('cslid_user', {});
+                    const role = await resolveAccountRole(authUser, previousUser);
                     setStore('cslid_user', {
                         id: authUser.id,
                         name: displayName,
                         email: authUser.email,
-                        role: authUser.user_metadata?.role || previousUser.role || ''
+                        role
                     });
                 } else {
                     localStorage.removeItem('cslid_user');
@@ -839,11 +860,12 @@
                     }
                     if (authUser) {
                         const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+                        const previousUser = getStore('cslid_user', {});
                         setStore('cslid_user', {
                             id: authUser.id,
                             name: displayName,
                             email: authUser.email,
-                            role: authUser.user_metadata?.role || getStore('cslid_user', {}).role || ''
+                            role: authUser.user_metadata?.role || (previousUser?.id === authUser.id ? previousUser.role : '') || ''
                         });
                         updateUserUI();
                         hydrateFromSupabase();
@@ -1211,8 +1233,6 @@
       showToast('Pitch ready to copy.');
     }
   };
-
-  function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 
   // Add Message buttons to existing directory cards without changing their design.
   function enhanceDirectory(){

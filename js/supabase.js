@@ -18,7 +18,8 @@
             auth: {
                 persistSession: true,
                 autoRefreshToken: true,
-                detectSessionInUrl: true
+                detectSessionInUrl: true,
+                storage: window.localStorage
             }
         });
         async function loadData() {
